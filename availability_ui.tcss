@@ -1,0 +1,29 @@
+Screen {
+    layout: vertical;
+}
+
+.box {
+    border: solid green;
+}
+
+#status-widget {
+  height: 5;
+}
+
+Select {
+    width: 20;
+    margin: 1;
+}
+
+#status-line {
+  margin: 1;
+}
+
+Input {
+  width: 50;
+  margin: 1;
+}
+
+.hide {
+  display: none;
+}
