@@ -1,0 +1,73 @@
+Screen {
+  layout: vertical;
+}
+
+.box {
+  border: solid green;
+}
+
+#status-widget {
+  height: 5;
+}
+
+Select {
+  width: 20;
+}
+
+#status-line {
+  margin: 1;
+}
+
+#node-label {
+  margin: 1 0 0 1;
+}
+
+#baseurl {
+  width: 40;
+  margin-bottom: 8;
+}
+
+.hide {
+  display: none;
+}
+
+AutoComplete {
+  max-height: 4;
+  max-width: 15;
+  margin-right: 3;
+  align: left top;
+}
+
+Requests {
+  layout: grid;
+  grid-size: 5 5;
+  grid-columns: 1.5fr 1fr 1fr 1fr 1fr;
+  grid-rows: 2 4 4 4 3.8;
+  max-height: 17;
+  min-width: 140;
+}
+
+#request-title {
+  column-span: 5;
+}
+
+#request-node {
+  row-span: 4;
+}
+
+#nslc, #timeframe, #merge, #quality {
+  column-span: 4;
+}
+
+.short-input {
+  width: 15;
+}
+
+.date-input {
+  width: 27;
+  margin-right: 3;
+}
+
+.request-label {
+  margin-top: 1;
+}
