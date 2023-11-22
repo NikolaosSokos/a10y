@@ -24,7 +24,11 @@ Select {
 
 #baseurl {
   width: 40;
-  margin-bottom: 8;
+  margin-bottom: 5;
+}
+
+#request-button {
+  margin-left: 1;
 }
 
 .hide {
