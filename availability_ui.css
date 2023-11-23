@@ -6,16 +6,12 @@ Screen {
   border: solid green;
 }
 
-#status-widget {
-  height: 5;
-}
-
-Select {
+#nodes {
   width: 20;
 }
 
 #status-line {
-  margin: 1;
+  margin: 1 0 0 1;
 }
 
 #node-label {
@@ -29,6 +25,10 @@ Select {
 
 #request-button {
   margin-left: 1;
+}
+
+#times {
+  width: 26;
 }
 
 .hide {
@@ -69,9 +69,13 @@ Requests {
 
 .date-input {
   width: 27;
-  margin-right: 3;
+  margin-right: 1;
 }
 
 .request-label {
   margin-top: 1;
+}
+
+#results {
+  margin: 1 0 0 1;
 }
