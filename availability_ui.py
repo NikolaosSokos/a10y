@@ -1,7 +1,8 @@
 from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, ScrollableContainer
-from textual.widgets import Static, Label, Select, Input, Checkbox, Button, Header
+from textual.widgets import Static, Label, Select, Input, Checkbox, Button, DataTable, Header
+from textual.coordinate import Coordinate
 from textual_autocomplete import AutoComplete, Dropdown, DropdownItem
 import requests
 from datetime import datetime, timedelta
@@ -9,7 +10,7 @@ from datetime import datetime, timedelta
 
 # PENDINGS:
 #  - how to lose focus from all elements
-#  - send button handling
+#  - find a way to bind arrow keys with bar info
 
 class Requests(Static):
     """Web service request control widget"""
@@ -97,7 +98,8 @@ class Results(Static):
 
     def compose(self) -> ComposeResult:
         yield Static("Results")
-        yield Static("", id="results")
+        #yield Static("Quality:                     Timestamp:                     Trace start:                      Trace end:                     ", id="info-bar")
+        yield DataTable(show_header=True, id="results")
 
 
 class AvailabilityUI(App):
@@ -105,7 +107,8 @@ class AvailabilityUI(App):
     BINDINGS = [("escape", "unfocus_input", "Lose input focus")]
 
     def compose(self) -> ComposeResult:
-        yield Header()
+        self.title = "Availability UI"
+        yield Header("Availability UI")
         yield ScrollableContainer(
             Static("Explanations", classes="box"),
             Requests(classes="box"),
@@ -126,8 +129,10 @@ class AvailabilityUI(App):
                     r = requests.get(event.value+"station/1/query?level=network&format=text")
                     if r.status_code != 200:
                         self.query_one("#status-line").update(f"[red]Couldn't retrieve Networks from {event.value}station/1/query?level=network&format=text[/red]")
-                    autocomplete_nets = self.query_one("#networks")
-                    autocomplete_nets.items = [DropdownItem(n.split('|')[0]) for n in r.text.splitlines()[1:]]
+                    else:
+                        self.query_one("#status-line").update(f'[green]Retrieved Networks from {event.value}station/1/query?level=network&format=text[/green]')
+                        autocomplete_nets = self.query_one("#networks")
+                        autocomplete_nets.items = [DropdownItem(n.split('|')[0]) for n in r.text.splitlines()[1:]]
                 else:
                     self.query_one("#status-line").update('[red]Availability URL is not valid[/red]')
             else:
@@ -186,6 +191,7 @@ class AvailabilityUI(App):
             if r.status_code != 200:
                 self.query_one("#status-line").update(f"[red]Couldn't retrieve Stations from {self.query_one('#nodes').value}station/1/query?{'network='+net if net else ''}&format=text[/red]")
             else:
+                self.query_one("#status-line").update(f"[green]Retrieved Stations from {self.query_one('#nodes').value}station/1/query?{'network='+net if net else ''}&format=text[/green]")
                 autocomplete = self.query_one("#stations")
                 autocomplete.items = [DropdownItem(s.split('|')[1]) for s in r.text.splitlines()[1:]]
         # for typing station
@@ -202,6 +208,7 @@ class AvailabilityUI(App):
             if r.status_code != 200:
                 self.query_one("#status-line").update(f"[red]Couldn't retrieve Channels from {self.query_one('#nodes').value}station/1/query?{'network='+net if net else ''}{'&station='+sta if sta else ''}&level=channel&format=text[/red]")
             else:
+                self.query_one("#status-line").update(f"[green]Retrieved Channels from {self.query_one('#nodes').value}station/1/query?{'network='+net if net else ''}{'&station='+sta if sta else ''}&level=channel&format=text[/green]")
                 autocomplete = self.query_one("#channels")
                 autocomplete.items = [DropdownItem(unique) for unique in {c.split('|')[3] for c in r.text.splitlines()[1:]}]
 
@@ -231,7 +238,20 @@ class AvailabilityUI(App):
                 self.query_one('#results').update(f"[red]{r.text}[/red]")
             else:
                 self.query_one('#status-line').update("[green]Request successfully returned data![/green]")
-                self.query_one('#results').update(r.text)
+                self.show_results(r.text.splitlines()[5:])
+
+
+    def show_results(self, csv_results):
+        rows = []
+        for r in csv_results:
+            parts = r.split('|')
+            rows.append((f"{parts[0]}_{parts[1]}_{parts[2]}_{parts[3]}", "─────"))
+        self.query_one("#results").clear()
+        self.query_one("#results").add_columns("", "Quality:                     Timestamp:                     Trace start:                      Trace end:                     ")
+        self.query_one("#results").add_rows(rows)
+        self.query_one("#results").focus()
+        #key = self.query_one("#results").coordinate_to_cell_key(Coordinate(column=1,row=0))[1]
+        #self.query_one("#results").columns[key].label = 'fucker'
 
 
     def action_unfocus_input(self) -> None:
