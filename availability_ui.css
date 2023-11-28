@@ -80,7 +80,6 @@ Requests {
   margin: 1 0 0 1;
 }
 
-/*#info-bar {
-  margin: 1 0 0 10;
-  background: cadetblue;
-}*/
+#info-bar {
+  background: $primary;
+}

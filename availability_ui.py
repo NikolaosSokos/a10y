@@ -9,8 +9,11 @@ from datetime import datetime, timedelta
 
 
 # PENDINGS:
+#  - URLs for all nodes
 #  - how to lose focus from all elements
-#  - find a way to bind arrow keys with bar info
+#  - find a way to have space between info-bar and table
+#  - find a way to move the cursor into lines (maybe sufficient to have one column for each line)
+
 
 class Requests(Static):
     """Web service request control widget"""
@@ -96,15 +99,22 @@ class Status(Static):
 class Results(Static):
     """App show results widget"""
 
+    class MyDataTable(DataTable):
+        def compose(self) -> ComposeResult:
+            yield Static("     Quality:                     Timestamp:                     Trace start:                      Trace end:                     ", id="info-bar")
+
+        def action_cursor_down(self) -> None:
+            self.query_one("#info-bar").update("     Test...")
+            super().action_cursor_down()
+
     def compose(self) -> ComposeResult:
         yield Static("Results")
-        #yield Static("Quality:                     Timestamp:                     Trace start:                      Trace end:                     ", id="info-bar")
-        yield DataTable(show_header=True, id="results")
+        yield self.MyDataTable(show_header=True, id="results")
 
 
 class AvailabilityUI(App):
     CSS_PATH = "availability_ui.css"
-    BINDINGS = [("escape", "unfocus_input", "Lose input focus")]
+    BINDINGS = [("escape", "unfocus_input", "Lose input focus"),]
 
     def compose(self) -> ComposeResult:
         self.title = "Availability UI"
@@ -235,23 +245,22 @@ class AvailabilityUI(App):
             if r.status_code == 204:
                 self.query_one('#status-line').update("[red]No data available[/red]")
             elif r.status_code != 200:
-                self.query_one('#results').update(f"[red]{r.text}[/red]")
+                self.query_one('#status-line').update(f"[red]{r.text}[/red]")
             else:
                 self.query_one('#status-line').update("[green]Request successfully returned data![/green]")
                 self.show_results(r.text.splitlines()[5:])
 
 
     def show_results(self, csv_results):
-        rows = []
+        rows = {}
         for r in csv_results:
             parts = r.split('|')
-            rows.append((f"{parts[0]}_{parts[1]}_{parts[2]}_{parts[3]}", "─────"))
+            key = f"{parts[0]}_{parts[1]}_{parts[2]}_{parts[3]}"
+            rows[key] = rows.get(key, "") + "─── "
         self.query_one("#results").clear()
-        self.query_one("#results").add_columns("", "Quality:                     Timestamp:                     Trace start:                      Trace end:                     ")
-        self.query_one("#results").add_rows(rows)
+        self.query_one("#results").add_columns("", "")
+        self.query_one("#results").add_rows(list(rows.items()))
         self.query_one("#results").focus()
-        #key = self.query_one("#results").coordinate_to_cell_key(Coordinate(column=1,row=0))[1]
-        #self.query_one("#results").columns[key].label = 'fucker'
 
 
     def action_unfocus_input(self) -> None:
