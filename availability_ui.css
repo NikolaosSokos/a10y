@@ -47,7 +47,7 @@ Requests {
   grid-size: 5 5;
   grid-columns: 1.5fr 1fr 1fr 1fr 1fr;
   grid-rows: 2 4 4 4 3.8;
-  max-height: 17;
+  max-height: 19;
   min-width: 140;
 }
 
@@ -59,8 +59,12 @@ Requests {
   row-span: 4;
 }
 
-#nslc, #timeframe, #merge, #quality {
+#nslc, #timeframe, #merge, #gaps-quality {
   column-span: 4;
+}
+
+#mergegaps {
+  margin-right: 3;
 }
 
 .short-input {
@@ -78,6 +82,7 @@ Requests {
 
 #results {
   margin: 1 0 0 1;
+  min-height: 5;
 }
 
 #info-bar {

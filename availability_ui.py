@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 #  - how to lose focus from all elements
 #  - find a way to have space between info-bar and table
 #  - find a way to move the cursor into lines (maybe sufficient to have one column for each line)
+#  - find a way to make the height of table too small when gets too width
 
 
 class Requests(Static):
@@ -79,12 +80,14 @@ class Requests(Static):
             id="merge"
         )
         yield Horizontal(
+            Label("Mergegaps:", classes="request-label"),
+            Input(placeholder="0.0", type="number", classes="short-input", id="mergegaps"),
             Label("Quality:", classes="request-label"),
             Checkbox("D", True, id="qd"),
             Checkbox("R", True, id="qr"),
             Checkbox("Q", True, id="qq"),
             Checkbox("M", True, id="qm"),
-            id="quality"
+            id="gaps-quality"
         )
 
 
@@ -104,8 +107,20 @@ class Results(Static):
             yield Static("     Quality:                     Timestamp:                     Trace start:                      Trace end:                     ", id="info-bar")
 
         def action_cursor_down(self) -> None:
-            self.query_one("#info-bar").update("     Test...")
+            self.query_one("#info-bar").update("     Down...")
             super().action_cursor_down()
+
+        def action_cursor_up(self) -> None:
+            self.query_one("#info-bar").update("     Up...")
+            super().action_cursor_up()
+
+        def action_cursor_right(self) -> None:
+            self.query_one("#info-bar").update("     Right...")
+            super().action_cursor_right()
+
+        def action_cursor_left(self) -> None:
+            self.query_one("#info-bar").update("     Left...")
+            super().action_cursor_left()
 
     def compose(self) -> ComposeResult:
         yield Static("Results")
@@ -234,12 +249,13 @@ class AvailabilityUI(App):
             start = self.query_one("#start").value
             end = self.query_one("#end").value
             merge = ",".join([option for option, bool in zip(['samplerate', 'quality', 'overlap'], [self.query_one("#samplerate").value, self.query_one("#qual").value, self.query_one("#overlap").value]) if bool])
+            mergegaps = str(self.query_one("#mergegaps").value)
             quality = ",".join([q for q, bool in zip(['D', 'R', 'Q', 'M'], [self.query_one("#qd").value, self.query_one("#qr").value, self.query_one("#qq").value, self.query_one("#qm").value]) if bool])
-            request = f"{node+'availability/1/query' if node else self.query_one('#baseurl').value}?format=geocsv{'&network='+net if net else ''}{'&station='+sta if sta else ''}{'&location='+loc if loc else ''}{'&channel='+cha if cha else ''}{'&starttime='+start if start else ''}{'&endtime='+end if end else ''}{'&merge='+merge if merge else ''}{'&quality='+quality if quality else ''}"
+            request = f"{node+'availability/1/query' if node else self.query_one('#baseurl').value}?format=geocsv{'&network='+net if net else ''}{'&station='+sta if sta else ''}{'&location='+loc if loc else ''}{'&channel='+cha if cha else ''}{'&starttime='+start if start else ''}{'&endtime='+end if end else ''}{'&merge='+merge if merge else ''}{'&quality='+quality if quality else ''}{'&mergegaps='+mergegaps if mergegaps else ''}"
             self.query_one('#status-line').update("Issuing request "+request)
             try:
                 r = requests.get(request)
-            except (requests.exceptions.InvalidURL, requests.exceptions.MissingSchema, requests.exceptions.ConnectionError):
+            except (requests.exceptions.InvalidURL, requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema, requests.exceptions.ConnectionError):
                 self.query_one("#status-line").update("[red]Please provide a valid availability URL[/red]")
                 return None
             if r.status_code == 204:
@@ -247,7 +263,7 @@ class AvailabilityUI(App):
             elif r.status_code != 200:
                 self.query_one('#status-line').update(f"[red]{r.text}[/red]")
             else:
-                self.query_one('#status-line').update("[green]Request successfully returned data![/green]")
+                self.query_one('#status-line').update(f"[green]Request successfully returned data from {request}[/green]")
                 self.show_results(r.text.splitlines()[5:])
 
 
@@ -256,8 +272,8 @@ class AvailabilityUI(App):
         for r in csv_results:
             parts = r.split('|')
             key = f"{parts[0]}_{parts[1]}_{parts[2]}_{parts[3]}"
-            rows[key] = rows.get(key, "") + "─── "
-        self.query_one("#results").clear()
+            rows[key] = rows.get(key, "") + "[green]──[/green][red]──[/red] "
+        self.query_one("#results").clear(columns=True)
         self.query_one("#results").add_columns("", "")
         self.query_one("#results").add_rows(list(rows.items()))
         self.query_one("#results").focus()
