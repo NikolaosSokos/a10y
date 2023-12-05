@@ -80,11 +80,11 @@ Requests {
   margin-top: 1;
 }
 
-#results {
-  margin: 1 0 0 1;
-  min-height: 5;
-}
-
 #info-bar {
   background: $primary;
+  margin: 1 0 0 1;
+}
+
+.result-item {
+  margin-left: 1;
 }

@@ -1,4 +1,4 @@
-from textual import on
+from textual import on, events
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, ScrollableContainer
 from textual.widgets import Static, Label, Select, Input, Checkbox, Button, DataTable, Header
@@ -6,6 +6,8 @@ from textual.coordinate import Coordinate
 from textual_autocomplete import AutoComplete, Dropdown, DropdownItem
 import requests
 from datetime import datetime, timedelta
+from typing import List
+from rich.text import Text
 
 
 # PENDINGS:
@@ -14,6 +16,65 @@ from datetime import datetime, timedelta
 #  - find a way to have space between info-bar and table
 #  - find a way to move the cursor into lines (maybe sufficient to have one column for each line)
 #  - find a way to make the height of table too small when gets too width
+
+
+class CursoredText(Input):
+    """Widget that shows a Static text with a cursor that can be moved within text content"""
+
+    DEFAULT_CSS = """
+    CursoredText {
+        background: $background;
+        padding: 0 0;
+        border: none;
+        height: 1;
+    }
+    CursoredText:focus {
+        border: none;
+    }
+    CursoredText>.input--cursor {
+        background: $surface;
+        color: $text;
+        text-style: reverse;
+    }
+    """
+
+    enriched = ""
+
+    def __init__(self, value=None, name=None, id=None, classes=None, disabled=False):
+        super().__init__(value=Text.from_markup(value).plain, name=name, id=id, classes=classes, disabled=disabled)
+        self.enriched = value
+
+    @property
+    def _value(self) -> Text:
+        """Value rendered as rich renderable"""
+        return Text.from_markup(self.enriched)
+
+    async def _on_key(self, event: events.Key) -> None:
+        if event.is_printable:
+            event.stop()
+            assert event.character is not None
+            event.prevent_default()
+
+    def _on_paste(self, event: events.Paste) -> None:
+        event.stop()
+
+    def action_delete_right(self) -> None:
+        pass
+
+    def action_delete_right_word(self) -> None:
+        pass
+
+    def action_delete_right_all(self) -> None:
+        pass
+
+    def action_delete_left(self) -> None:
+        pass
+
+    def action_delete_left_word(self) -> None:
+        pass
+
+    def action_delete_left_all(self) -> None:
+        pass
 
 
 class Requests(Static):
@@ -100,31 +161,10 @@ class Status(Static):
 
 
 class Results(Static):
-    """App show results widget"""
-
-    class MyDataTable(DataTable):
-        def compose(self) -> ComposeResult:
-            yield Static("     Quality:                     Timestamp:                     Trace start:                      Trace end:                     ", id="info-bar")
-
-        def action_cursor_down(self) -> None:
-            self.query_one("#info-bar").update("     Down...")
-            super().action_cursor_down()
-
-        def action_cursor_up(self) -> None:
-            self.query_one("#info-bar").update("     Up...")
-            super().action_cursor_up()
-
-        def action_cursor_right(self) -> None:
-            self.query_one("#info-bar").update("     Right...")
-            super().action_cursor_right()
-
-        def action_cursor_left(self) -> None:
-            self.query_one("#info-bar").update("     Left...")
-            super().action_cursor_left()
+    """Show results widget"""
 
     def compose(self) -> ComposeResult:
         yield Static("Results")
-        yield self.MyDataTable(show_header=True, id="results")
 
 
 class AvailabilityUI(App):
@@ -133,12 +173,12 @@ class AvailabilityUI(App):
 
     def compose(self) -> ComposeResult:
         self.title = "Availability UI"
-        yield Header("Availability UI")
+        yield Header()
         yield ScrollableContainer(
             Static("Explanations", classes="box"),
             Requests(classes="box"),
-            Status(classes="box", id="status-widget"),
-            Results(classes="box")
+            Status(classes="box"),
+            Results(classes="box", id="results-widget")
         )
 
     def on_select_changed(self, event: Select.Changed) -> None:
@@ -241,7 +281,13 @@ class AvailabilityUI(App):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """A function to send availability request when Send button is clicked"""
         if event.button == self.query_one("#request-button"):
-            node = self.query_one("#nodes").value
+            # clear previous results
+            if self.query('#info-bar'):
+                self.query_one('#info-bar').remove()
+            for r in self.query('.result-item'):
+                r.remove()
+            # build request
+            node = self.query_one("#nodes").value if self.query_one("#nodes").value != Select.BLANK else None
             net = self.query_one("#network").value
             sta = self.query_one("#station").value
             loc = self.query_one("#location").value
@@ -267,16 +313,12 @@ class AvailabilityUI(App):
                 self.show_results(r.text.splitlines()[5:])
 
 
-    def show_results(self, csv_results):
-        rows = {}
-        for r in csv_results:
-            parts = r.split('|')
-            key = f"{parts[0]}_{parts[1]}_{parts[2]}_{parts[3]}"
-            rows[key] = rows.get(key, "") + "[green]──[/green][red]──[/red] "
-        self.query_one("#results").clear(columns=True)
-        self.query_one("#results").add_columns("", "")
-        self.query_one("#results").add_rows(list(rows.items()))
-        self.query_one("#results").focus()
+    def show_results(self, text):
+        infoBar = Static("Quality:                     Timestamp:                     Trace start:                      Trace end:                     ", id="info-bar")
+        self.query_one('#results-widget').mount(infoBar)
+        for row in text:
+            parts = row.split('|')
+            self.query_one('#results-widget').mount(CursoredText(value=f"{parts[0]}_{parts[1]}_{parts[2]}_{parts[3]}     [green]──[/green][red]──[/red]", classes="result-item"))
 
 
     def action_unfocus_input(self) -> None:
