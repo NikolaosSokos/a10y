@@ -36,10 +36,12 @@ class CursoredText(Input):
     """
 
     enriched = ""
+    info = []
 
-    def __init__(self, value=None, name=None, id=None, classes=None, disabled=False):
+    def __init__(self, value=None, info=[], name=None, id=None, classes=None, disabled=False):
         super().__init__(value=Text.from_markup(value).plain, name=name, id=id, classes=classes, disabled=disabled)
         self.enriched = value
+        self.info = info
 
     @property
     def _value(self) -> Text:
@@ -48,7 +50,7 @@ class CursoredText(Input):
 
     async def _on_key(self, event: events.Key) -> None:
         if event.is_printable:
-            self.parent.query_one("#info-bar").update("testing")
+            self.parent.parent.query_one("#info-bar").update("testing")
             event.stop()
             assert event.character is not None
             event.prevent_default()
@@ -56,8 +58,19 @@ class CursoredText(Input):
     def _on_paste(self, event: events.Paste) -> None:
         event.stop()
 
+    def action_cursor_right(self) -> None:
+        super().action_cursor_right()
+        if self.info[self.cursor_position][0]:
+            self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+        else:
+            self.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
+
     def action_cursor_left(self) -> None:
         super().action_cursor_left()
+        if self.info[self.cursor_position][0]:
+            self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+        else:
+            self.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
 
     def action_delete_right(self) -> None:
         pass
@@ -285,7 +298,7 @@ class AvailabilityUI(App):
             # clear previous results
             if self.query('#info-bar'):
                 self.query_one('#info-bar').remove()
-            for r in self.query('.result-item'):
+            for r in self.query('.result-container'):
                 r.remove()
             # build request
             node = self.query_one("#nodes").value if self.query_one("#nodes").value != Select.BLANK else None
@@ -315,14 +328,15 @@ class AvailabilityUI(App):
 
 
     def show_results(self, csv_results):
-        infoBar = Static("Quality:                     Timestamp:                     Trace start:                      Trace end:                     ", id="info-bar")
+        infoBar = Static("Quality:     Timestamp:                       Trace start:                       Trace end:                    ", id="info-bar")
         self.query_one('#results-widget').mount(infoBar)
         # cut time frame into desired number of spans to see for how many of them a trace lasts
         num_spans = 130
         start_frame = datetime.strptime(self.query_one("#start").value, "%Y-%m-%dT%H:%M:%S")
         end_frame = datetime.strptime(self.query_one("#end").value, "%Y-%m-%dT%H:%M:%S")
         span_frame = (end_frame - start_frame).total_seconds() / num_spans
-        traces = {}
+        traces = {} # for lines
+        infos = {} # for the info-bar
         for row in csv_results:
             parts = row.split('|')
             key = f"{parts[0]}_{parts[1]}_{parts[2]}_{parts[3]}"
@@ -338,9 +352,12 @@ class AvailabilityUI(App):
                 traces[key] = traces.get(key, "") + "[orchid]" + "─"*spans_trace + "[/orchid]" + " "
             elif parts[4] == 'M':
                 traces[key] = traces.get(key, "") + "[cyan]" + "─"*spans_trace + "[/cyan]" + " "
+            infos[key] = infos.get(key, []) + [(parts[4], "some_timestamp     " , parts[6][:19], parts[7][:19]) for st in range(spans_trace)] + [("", "", "", "")]
         for k in traces:
             traces[k] = traces[k][:-1] # remove last space
-            self.query_one('#results-widget').mount(CursoredText(value=f"{k}     {traces[k]}", classes="result-item"))
+            self.query_one('#results-widget').mount(Horizontal(Label(k), CursoredText(value=traces[k], info=infos[k], classes="result-item"), classes="result-container"))
+        if self.query(".result-item"):
+            self.query(".result-item")[0].focus()
 
 
     def action_unfocus_input(self) -> None:

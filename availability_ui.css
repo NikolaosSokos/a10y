@@ -86,5 +86,10 @@ Requests {
 }
 
 .result-item {
+  margin-left: 2;
+}
+
+.result-container {
   margin-left: 1;
+  max-height: 1;
 }
