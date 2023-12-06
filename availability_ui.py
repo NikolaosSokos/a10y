@@ -1,4 +1,4 @@
-from textual import on, events
+from textual import events
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, ScrollableContainer
 from textual.widgets import Static, Label, Select, Input, Checkbox, Button, DataTable, Header
@@ -13,9 +13,6 @@ from rich.text import Text
 # PENDINGS:
 #  - URLs for all nodes
 #  - how to lose focus from all elements
-#  - find a way to have space between info-bar and table
-#  - find a way to move the cursor into lines (maybe sufficient to have one column for each line)
-#  - find a way to make the height of table too small when gets too width
 
 
 class CursoredText(Input):
@@ -51,12 +48,16 @@ class CursoredText(Input):
 
     async def _on_key(self, event: events.Key) -> None:
         if event.is_printable:
+            self.parent.query_one("#info-bar").update("testing")
             event.stop()
             assert event.character is not None
             event.prevent_default()
 
     def _on_paste(self, event: events.Paste) -> None:
         event.stop()
+
+    def action_cursor_left(self) -> None:
+        super().action_cursor_left()
 
     def action_delete_right(self) -> None:
         pass
@@ -313,12 +314,33 @@ class AvailabilityUI(App):
                 self.show_results(r.text.splitlines()[5:])
 
 
-    def show_results(self, text):
+    def show_results(self, csv_results):
         infoBar = Static("Quality:                     Timestamp:                     Trace start:                      Trace end:                     ", id="info-bar")
         self.query_one('#results-widget').mount(infoBar)
-        for row in text:
+        # cut time frame into desired number of spans to see for how many of them a trace lasts
+        num_spans = 130
+        start_frame = datetime.strptime(self.query_one("#start").value, "%Y-%m-%dT%H:%M:%S")
+        end_frame = datetime.strptime(self.query_one("#end").value, "%Y-%m-%dT%H:%M:%S")
+        span_frame = (end_frame - start_frame).total_seconds() / num_spans
+        traces = {}
+        for row in csv_results:
             parts = row.split('|')
-            self.query_one('#results-widget').mount(CursoredText(value=f"{parts[0]}_{parts[1]}_{parts[2]}_{parts[3]}     [green]──[/green][red]──[/red]", classes="result-item"))
+            key = f"{parts[0]}_{parts[1]}_{parts[2]}_{parts[3]}"
+            start_trace = datetime.strptime(parts[6], "%Y-%m-%dT%H:%M:%S.%fZ")
+            end_trace = datetime.strptime(parts[7], "%Y-%m-%dT%H:%M:%S.%fZ")
+            spans_trace = (end_trace - start_trace).total_seconds() / span_frame
+            spans_trace = 1 if spans_trace < 1 else round(spans_trace)
+            if parts[4] == 'D':
+                traces[key] = traces.get(key, "") + "[yellow]" + "─"*spans_trace + "[/yellow]" + " "
+            elif parts[4] == 'R':
+                traces[key] = traces.get(key, "") + "[grey37]" + "─"*spans_trace + "[/gray37]" + " "
+            elif parts[4] == 'Q':
+                traces[key] = traces.get(key, "") + "[orchid]" + "─"*spans_trace + "[/orchid]" + " "
+            elif parts[4] == 'M':
+                traces[key] = traces.get(key, "") + "[cyan]" + "─"*spans_trace + "[/cyan]" + " "
+        for k in traces:
+            traces[k] = traces[k][:-1] # remove last space
+            self.query_one('#results-widget').mount(CursoredText(value=f"{k}     {traces[k]}", classes="result-item"))
 
 
     def action_unfocus_input(self) -> None:
