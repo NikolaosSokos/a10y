@@ -9,10 +9,13 @@ from datetime import datetime, timedelta
 from typing import List
 from rich.text import Text
 
-
+from textual.widget import Widget
 # PENDINGS:
 #  - URLs for all nodes
 #  - how to lose focus from all elements
+#  - find what to do with timestamps in lines
+#  - implememnt bindings (note up and down arrows might be reserved for scrolling)
+#  - previous trace bug
 
 
 class CursoredText(Input):
@@ -50,13 +53,44 @@ class CursoredText(Input):
 
     async def _on_key(self, event: events.Key) -> None:
         if event.is_printable:
-            self.parent.parent.query_one("#info-bar").update("testing")
+            if event.character == 'C':
+                nslc = self.parent.query_one(Label).renderable.split('_')
+                self.parent.parent.parent.query_one("#network").value = str(nslc[0])
+                self.parent.parent.parent.query_one("#station").value = str(nslc[1])
+                self.parent.parent.parent.query_one("#location").value = str(nslc[2])
+                self.parent.parent.parent.query_one("#channel").value = str(nslc[3])
+            elif event.character == 'S':
+                self.parent.parent.parent.query_one("#start").value = self.info[self.cursor_position][1]
+            elif event.character == 'E':
+                self.parent.parent.parent.query_one("#end").value = self.info[self.cursor_position][1]
+            elif event.character == 'n':
+                if self.value.find(' ', self.cursor_position) > -1 and self.value.find(' ', self.cursor_position) + 1 <= len(self.value):
+                    self.cursor_position = self.value.find(' ', self.cursor_position) + 1
+            elif event.character == 'p':
+                if self.value.rfind(' ', 0, self.cursor_position) > -1 and self.value.rfind(' ', 0, self.cursor_position) - 1 >= 0:
+                    self.cursor_position = self.value.rfind(' ', 0, self.cursor_position) + 1
+                    if self.value.rfind(' ', 0, self.cursor_position) > -1 and self.value.rfind(' ', 0, self.cursor_position) - 1 >= 0:
+                        self.cursor_position = self.value.rfind(' ', 0, self.cursor_position) + 1
             event.stop()
             assert event.character is not None
             event.prevent_default()
 
+    def _on_focus(self, event: events.Focus) -> None:
+        self.cursor_position = 0
+        if self.cursor_blink:
+            self._blink_timer.resume()
+        self.app.cursor_position = self.cursor_screen_offset
+        self.has_focus = True
+        self.refresh()
+        if self.parent is not None:
+            self.parent.post_message(events.DescendantFocus(self))
+        if self.info[self.cursor_position][0]:
+            self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+        event.prevent_default()
+
     def _on_paste(self, event: events.Paste) -> None:
         event.stop()
+        event.prevent_default()
 
     def action_cursor_right(self) -> None:
         super().action_cursor_right()
@@ -101,7 +135,7 @@ class Requests(Static):
                 Label("Node:", classes="request-label", id="node-label"),
                 Select([
                     ("NOA", "https://eida.gein.noa.gr/fdsnws/"),
-                    ("RESIF", "I don't know the URL")
+                    ("RESIF", "https://ws.resif.fr/fdsnws/")
                     ], prompt="Choose Node", id="nodes")
                 ),
             Input(placeholder="Enter Node Availability URL", id="baseurl"), # for the case of user entering availability endpoint URL
@@ -355,7 +389,7 @@ class AvailabilityUI(App):
             infos[key] = infos.get(key, []) + [(parts[4], "some_timestamp     " , parts[6][:19], parts[7][:19]) for st in range(spans_trace)] + [("", "", "", "")]
         for k in traces:
             traces[k] = traces[k][:-1] # remove last space
-            self.query_one('#results-widget').mount(Horizontal(Label(k), CursoredText(value=traces[k], info=infos[k], classes="result-item"), classes="result-container"))
+            self.query_one('#results-widget').mount(Horizontal(Label(k), CursoredText(value=traces[k], info=infos[k], classes="result-item"), classes="result-container", id=k))
         if self.query(".result-item"):
             self.query(".result-item")[0].focus()
 
