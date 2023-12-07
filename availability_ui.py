@@ -9,13 +9,14 @@ from datetime import datetime, timedelta
 from typing import List
 from rich.text import Text
 
-from textual.widget import Widget
+
 # PENDINGS:
-#  - URLs for all nodes
 #  - how to lose focus from all elements
 #  - find what to do with timestamps in lines
-#  - implememnt bindings (note up and down arrows might be reserved for scrolling)
-#  - previous trace bug
+#  - implememnt bindings (up and down arrows reserved for scrolling, use tab and shift+tab instead): pending /, pageUp, pageDown, Enter
+#  - could have all nslc labels in a Container and the same for lines and then these containers into a Horizontal
+#  - see the issues
+#  - PROBLEM: ORDER OF ROWS RETURNED FROM AVAILABILITY NOT ACCORDING TO TIME (see https://eida.koeri.boun.edu.tr/fdsnws/availability/1/query?&network=KO&station=ADVT&starttime=2023-12-06T00:27:16&endtime=2023-12-08T00:27:16)
 
 
 class CursoredText(Input):
@@ -64,13 +65,17 @@ class CursoredText(Input):
             elif event.character == 'E':
                 self.parent.parent.parent.query_one("#end").value = self.info[self.cursor_position][1]
             elif event.character == 'n':
-                if self.value.find(' ', self.cursor_position) > -1 and self.value.find(' ', self.cursor_position) + 1 <= len(self.value):
-                    self.cursor_position = self.value.find(' ', self.cursor_position) + 1
+                temp = self.value.find(' ', self.cursor_position)
+                if temp > -1 and temp + 1 <= len(self.value):
+                    self.cursor_position = temp + 1
             elif event.character == 'p':
-                if self.value.rfind(' ', 0, self.cursor_position) > -1 and self.value.rfind(' ', 0, self.cursor_position) - 1 >= 0:
-                    self.cursor_position = self.value.rfind(' ', 0, self.cursor_position) + 1
-                    if self.value.rfind(' ', 0, self.cursor_position) > -1 and self.value.rfind(' ', 0, self.cursor_position) - 1 >= 0:
-                        self.cursor_position = self.value.rfind(' ', 0, self.cursor_position) + 1
+                temp = self.value.rfind(' ', 0, self.cursor_position)
+                if temp > -1 and temp - 1 >= 0:
+                    temp = self.value.rfind(' ', 0, temp)
+                    if temp > -1 and temp - 1 >= 0:
+                        self.cursor_position = temp + 1
+                    elif temp == -1 and self.cursor_position > 0:
+                        self.cursor_position = 0
             event.stop()
             assert event.character is not None
             event.prevent_default()
@@ -135,7 +140,17 @@ class Requests(Static):
                 Label("Node:", classes="request-label", id="node-label"),
                 Select([
                     ("NOA", "https://eida.gein.noa.gr/fdsnws/"),
-                    ("RESIF", "https://ws.resif.fr/fdsnws/")
+                    ("RESIF", "https://ws.resif.fr/fdsnws/"),
+                    ("ODC", "https://orfeus-eu.org/fdsnws/"),
+                    ("GFZ", "https://geofon.gfz-potsdam.de/fdsnws/"),
+                    ("INGV", "https://webservices.ingv.it/fdsnws/"),
+                    ("ETHZ", "https://eida.ethz.ch/fdsnws/"),
+                    ("BGR", "https://eida.bgr.de/fdsnws/"),
+                    ("NIEP", "https://eida-sc3.infp.ro/fdsnws/"),
+                    ("KOERI", "https://eida.koeri.boun.edu.tr/fdsnws/"),
+                    ("LMU", "https://erde.geophysik.uni-muenchen.de/fdsnws/"),
+                    ("UIB-NORSAR", "https://eida.geo.uib.no/fdsnws/"),
+                    ("ICGC", "https://ws.icgc.cat/fdsnws/")
                     ], prompt="Choose Node", id="nodes")
                 ),
             Input(placeholder="Enter Node Availability URL", id="baseurl"), # for the case of user entering availability endpoint URL
