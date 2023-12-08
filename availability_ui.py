@@ -10,13 +10,18 @@ from typing import List
 from rich.text import Text
 
 
-# PENDINGS:
+# TODOS:
 #  - how to lose focus from all elements
 #  - find what to do with timestamps in lines
 #  - implememnt bindings (up and down arrows reserved for scrolling, use tab and shift+tab instead): pending /, pageUp, pageDown, Enter
-#  - could have all nslc labels in a Container and the same for lines and then these containers into a Horizontal
 #  - see the issues
-#  - PROBLEM: ORDER OF ROWS RETURNED FROM AVAILABILITY NOT ACCORDING TO TIME (see https://eida.koeri.boun.edu.tr/fdsnws/availability/1/query?&network=KO&station=ADVT&starttime=2023-12-06T00:27:16&endtime=2023-12-08T00:27:16)
+#  - write explanations and available buttons
+#  - could have all nslc labels in a Container and the same for lines and then these containers into a Horizontal
+#  - could make new classes of inputs and selections to make them smaller in height to have a smaller request control box
+
+# PROBLEMS WITH AVAILABILITY:
+#  - ORDER OF ROWS RETURNED FROM AVAILABILITY NOT ACCORDING TO TIME AND OVERLAP (see https://eida.koeri.boun.edu.tr/fdsnws/availability/1/query?&network=KO&station=ADVT&starttime=2023-12-06T00:27:16&endtime=2023-12-08T00:27:16)
+#  - DUPLICATE ENTRIES (see https://eida.gein.noa.gr/fdsnws/availability/1/query?station=ATH&starttime=2023-12-02T00:27:16&endtime=2023-12-08T00:27:16)
 
 
 class CursoredText(Input):
@@ -68,6 +73,10 @@ class CursoredText(Input):
                 temp = self.value.find(' ', self.cursor_position)
                 if temp > -1 and temp + 1 <= len(self.value):
                     self.cursor_position = temp + 1
+                    if self.info[self.cursor_position][0]:
+                        self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+                    else:
+                        self.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
             elif event.character == 'p':
                 temp = self.value.rfind(' ', 0, self.cursor_position)
                 if temp > -1 and temp - 1 >= 0:
@@ -76,6 +85,10 @@ class CursoredText(Input):
                         self.cursor_position = temp + 1
                     elif temp == -1 and self.cursor_position > 0:
                         self.cursor_position = 0
+                    if self.info[self.cursor_position][0]:
+                        self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+                    else:
+                        self.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
             event.stop()
             assert event.character is not None
             event.prevent_default()
@@ -91,6 +104,8 @@ class CursoredText(Input):
             self.parent.post_message(events.DescendantFocus(self))
         if self.info[self.cursor_position][0]:
             self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+        else:
+            self.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
         event.prevent_default()
 
     def _on_paste(self, event: events.Paste) -> None:
@@ -182,9 +197,9 @@ class Requests(Static):
         )
         yield Horizontal(
             Label("Start Time:", classes="request-label"),
-            Input(classes="date-input", id="start"),
+            Input(classes="date-input", id="start", value=(datetime.now() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S")),
             Label("End Time:", classes="request-label"),
-            Input(classes="date-input", id="end"),
+            Input(classes="date-input", id="end", value=datetime.now().strftime("%Y-%m-%dT%H:%M:%S")),
             Select([
                 ("last 24 hours", 1),
                 ("last 2 days", 2),
@@ -200,12 +215,12 @@ class Requests(Static):
             Label("Merge Options:", classes="request-label"),
             Checkbox("Samplerate", id="samplerate"),
             Checkbox("Quality", id="qual"),
-            Checkbox("Overlap", id="overlap"),
+            Checkbox("Overlap", id="overlap", value=True),
             id="merge"
         )
         yield Horizontal(
             Label("Mergegaps:", classes="request-label"),
-            Input(placeholder="0.0", type="number", classes="short-input", id="mergegaps"),
+            Input(value="0.0", type="number", classes="short-input", id="mergegaps"),
             Label("Quality:", classes="request-label"),
             Checkbox("D", True, id="qd"),
             Checkbox("R", True, id="qr"),
@@ -269,6 +284,7 @@ class AvailabilityUI(App):
 
         if event.select == self.query_one("#times"):
             start = self.query_one("#start")
+            mergegaps = self.query_one("#mergegaps")
             if not event.value:
                 start.value = ""
                 end = self.query_one("#end")
@@ -280,14 +296,21 @@ class AvailabilityUI(App):
                 start.value = (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%S")
             elif event.value == 3:
                 start.value = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S")
+                mergegaps.value = "1.0"
             elif event.value == 4:
                 start.value = datetime.now().replace(day=1, hour=0, minute=0, second=0).strftime("%Y-%m-%dT%H:%M:%S")
+                if datetime.now().date().day > 7:
+                    mergegaps.value = "5.0"
             elif event.value == 5:
                 start.value = (datetime.now() - timedelta(days=61)).strftime("%Y-%m-%dT%H:%M:%S")
+                mergegaps.value = "10.0"
             elif event.value == 6:
                 start.value = (datetime.now() - timedelta(days=183)).strftime("%Y-%m-%dT%H:%M:%S")
+                mergegaps.value = "60.0"
             elif event.value == 7:
                 start.value = datetime.now().replace(month=1, day=1, hour=0, minute=0, second=0).strftime("%Y-%m-%dT%H:%M:%S")
+                if datetime.now().date().month >= 6:
+                    mergegaps.value = "300.0"
             end = self.query_one("#end")
             end.value = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
