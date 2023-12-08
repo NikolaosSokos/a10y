@@ -10,7 +10,11 @@ Screen {
   width: 20;
 }
 
-#status-line {
+Status {
+    max-height: 7;
+}
+
+#status-container {
   margin: 1 0 0 1;
 }
 
