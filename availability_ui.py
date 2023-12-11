@@ -66,23 +66,42 @@ class CursoredText(Input):
             elif event.character == 'E':
                 self.parent.parent.parent.query_one("#end").value = self.info[self.cursor_position][1]
             elif event.character == 'n':
-                temp = self.value.find(' ', self.cursor_position)
+                temp1 = self.value.find(' ', self.cursor_position)
+                temp2 = self.value.find('╌', self.cursor_position)
+                temp3 = self.value.find('┄', self.cursor_position)
+                temp = min(temp1, temp2, temp3)
                 if temp > -1 and temp + 1 <= len(self.value):
                     self.cursor_position = temp + 1
-                    if self.info[self.cursor_position][0]:
-                        self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+                    if self.info[self.cursor_position][1]:
+                        if self.value[self.cursor_position] == '─':
+                            self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+                        elif self.value[self.cursor_position] == ' ':
+                            self.parent.parent.query_one("#info-bar").update(f"Quality:     Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
+                        else:
+                            self.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
                     else:
                         self.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
             elif event.character == 'p':
-                temp = self.value.rfind(' ', 0, self.cursor_position)
-                if temp > -1 and temp - 1 >= 0:
-                    temp = self.value.rfind(' ', 0, temp)
+                temp1 = self.value.rfind(' ', 0, self.cursor_position)
+                temp2 = self.value.rfind('╌', 0, self.cursor_position)
+                temp3 = self.value.rfind('┄', 0, self.cursor_position)
+                temp = max(temp1, temp2, temp3)
+                if temp - 1 >= 0:
+                    temp1 = self.value.rfind(' ', 0, temp)
+                    temp2 = self.value.rfind('╌', 0, temp)
+                    temp3 = self.value.rfind('┄', 0, temp)
+                    temp = max(temp1, temp2, temp3)
                     if temp > -1 and temp - 1 >= 0:
                         self.cursor_position = temp + 1
                     elif temp == -1 and self.cursor_position > 0:
                         self.cursor_position = 0
-                    if self.info[self.cursor_position][0]:
-                        self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+                    if self.info[self.cursor_position][1]:
+                        if self.value[self.cursor_position] == '─':
+                            self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+                        elif self.value[self.cursor_position] == ' ':
+                            self.parent.parent.query_one("#info-bar").update(f"Quality:     Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
+                        else:
+                            self.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
                     else:
                         self.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
             event.stop()
@@ -98,8 +117,13 @@ class CursoredText(Input):
         self.refresh()
         if self.parent is not None:
             self.parent.post_message(events.DescendantFocus(self))
-        if self.info[self.cursor_position][0]:
-            self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+        if self.info[self.cursor_position][1]:
+            if self.value[self.cursor_position] == '─':
+                self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+            elif self.value[self.cursor_position] == ' ':
+                self.parent.parent.query_one("#info-bar").update(f"Quality:     Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
+            else:
+                self.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
         else:
             self.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
         event.prevent_default()
@@ -110,15 +134,25 @@ class CursoredText(Input):
 
     def action_cursor_right(self) -> None:
         super().action_cursor_right()
-        if self.info[self.cursor_position][0]:
-            self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+        if self.info[self.cursor_position][1]:
+            if self.value[self.cursor_position] == '─':
+                self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+            elif self.value[self.cursor_position] == ' ':
+                self.parent.parent.query_one("#info-bar").update(f"Quality:     Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
+            else:
+                self.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
         else:
             self.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
 
     def action_cursor_left(self) -> None:
         super().action_cursor_left()
-        if self.info[self.cursor_position][0]:
-            self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+        if self.info[self.cursor_position][1]:
+            if self.value[self.cursor_position] == '─':
+                self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+            elif self.value[self.cursor_position] == ' ':
+                self.parent.parent.query_one("#info-bar").update(f"Quality:     Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
+            else:
+                self.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
         else:
             self.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
 
@@ -401,9 +435,59 @@ class AvailabilityUI(App):
         num_spans = 130
         start_frame = datetime.strptime(self.query_one("#start").value, "%Y-%m-%dT%H:%M:%S")
         end_frame = datetime.strptime(self.query_one("#end").value, "%Y-%m-%dT%H:%M:%S")
-        span_frame = (end_frame - start_frame).total_seconds() / num_spans
-        traces = {} # for lines
-        infos = {} # for the info-bar
+        span_frame = (end_frame - start_frame) / num_spans
+        lines = {} # for lines of each nslc
+        infos = {} # for the info-bar of each nslc
+        for span in range(num_spans):
+            # find traces and quality codes (U for undefined, i.e. initialization or traces with different codes exist)
+            # for each span of each nslc line
+            traces_qual = {}
+            for i, row in enumerate(csv_results):
+                parts = row.split('|')
+                key = f"{parts[0]}_{parts[1]}_{parts[2]}_{parts[3]}"
+                start_trace = datetime.strptime(parts[6], "%Y-%m-%dT%H:%M:%S.%fZ")
+                end_trace = datetime.strptime(parts[7], "%Y-%m-%dT%H:%M:%S.%fZ")
+                traces_qual[key] = traces_qual.get(key, [[], 'U']) # initialization
+                span_start = start_frame + span * span_frame
+                span_end = start_frame + (span + 1) * span_frame
+                # below condition explained: if trace has at least a part of it into the current span
+                if (span_start <= start_trace < span_end or
+                    span_start < end_trace <= span_end or
+                    start_trace <= span_start < span_end <= end_trace):
+                    traces_qual[key][0].append(i) # row i has a part into span
+                    if len(traces_qual[key][0]) == 1:
+                        traces_qual[key][1] = parts[4] # first trace for span gives quality code
+                    else:
+                        traces_qual[key][1] = 'U' # if more traces in one span => undefined quality code
+            # write current span for each nslc line
+            for key in traces_qual:
+                lines[key] = lines.get(key, "") # initialization
+                infos[key] = infos.get(key, []) # initialization
+                if len(traces_qual[key][0]) == 0:
+                    lines[key] += ' '
+                    infos[key].append(("", (start_frame+(span+0.5)*span_frame).strftime("%Y-%m-%dT%H:%M:%S"), "", ""))
+                elif len(traces_qual[key][0]) == 1:
+                    if traces_qual[key][1] == 'D':
+                        lines[key] += "[yellow]─[/yellow]"
+                    elif traces_qual[key][1] == 'R':
+                        lines[key] += "[green1]─[/green1]"
+                    elif traces_qual[key][1] == 'Q':
+                        lines[key] += "[orchid]─[/orchid]"
+                    elif traces_qual[key][1] == 'M':
+                        lines[key] += "[cyan]─[/cyan]"
+                    infos[key].append((traces_qual[key][1], (start_frame+(span+0.5)*span_frame).strftime("%Y-%m-%dT%H:%M:%S"), csv_results[traces_qual[key][0][0]].split('|')[6][:19], csv_results[traces_qual[key][0][0]].split('|')[7][:19]))
+                elif len(traces_qual[key][0]) == 2:
+                    lines[key] += '╌'
+                    infos[key].append(("1", (start_frame+(span+0.5)*span_frame).strftime("%Y-%m-%dT%H:%M:%S"), "", ""))
+                else:
+                    lines[key] += '┄'
+                    infos[key].append((str(len(traces_qual[key][0])-1), (start_frame+(span+0.5)*span_frame).strftime("%Y-%m-%dT%H:%M:%S"), "", ""))
+        for k in lines:
+            infos[k].append(("", "", "", "")) # because cursor can go one character after the end of the input
+            self.query_one('#results-widget').mount(Horizontal(Label(k), CursoredText(value=lines[k], info=infos[k], classes="result-item"), classes="result-container", id=k))
+        if self.query(".result-item"):
+            self.query(".result-item")[0].focus()
+        """
         for row in csv_results:
             parts = row.split('|')
             key = f"{parts[0]}_{parts[1]}_{parts[2]}_{parts[3]}"
@@ -420,11 +504,7 @@ class AvailabilityUI(App):
             elif parts[4] == 'M':
                 traces[key] = traces.get(key, "") + "[cyan]" + "─"*spans_trace + "[/cyan]" + " "
             infos[key] = infos.get(key, []) + [(parts[4], "some_timestamp     " , parts[6][:19], parts[7][:19]) for st in range(spans_trace)] + [("", "", "", "")]
-        for k in traces:
-            traces[k] = traces[k][:-1] # remove last space
-            self.query_one('#results-widget').mount(Horizontal(Label(k), CursoredText(value=traces[k], info=infos[k], classes="result-item"), classes="result-container", id=k))
-        if self.query(".result-item"):
-            self.query(".result-item")[0].focus()
+        """
 
 
     def action_unfocus_input(self) -> None:

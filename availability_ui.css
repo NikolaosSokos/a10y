@@ -4,6 +4,7 @@ Screen {
 
 .box {
   border: solid green;
+  min-width: 148;
 }
 
 #nodes {
@@ -52,7 +53,6 @@ Requests {
   grid-columns: 1.5fr 1fr 1fr 1fr 1fr;
   grid-rows: 2 4 4 4 3.8;
   max-height: 19;
-  min-width: 140;
 }
 
 #request-title {
