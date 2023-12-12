@@ -15,9 +15,7 @@ from rich.text import Text
 #  - implememnt bindings: pending /, pageUp, pageDown, Enter
 #  - see the issues
 #  - possible bad thing: in case long gap ends in middle of span and trace starts I print a dash as if there was no gap
-#  - could have all nslc labels in a Container and the same for lines and then these containers into a Horizontal
-#  - problem: can't focus in the first line cause can't find inner items of ResultItem through queries (which does not make sense)
-#  - could make new classes of inputs and selections to make them smaller in height to have a smaller request control box (or simply try to override their css)
+#  - could have all nslc labels in a Container and the same for lines and then these containers into a Horizontal (but doesn't work)
 
 
 class CursoredText(Input):
@@ -179,27 +177,8 @@ class CursoredText(Input):
         pass
 
 
-class ResultItem(Static):
-    """Result items widget that consists of a Label and a CursoredText widget side by side"""
-
-    DEFAULT_CSS = """
-    CursoredText {
-        margin-left: 2;
-    }
-    """
-
-    label = ""
-    value = ""
-    info = []
-
-    def __init__(self, label=None, value=None, info=[], name= None, id = None, classes = None, disabled = False):
-        super().__init__(name=name, id=id, classes=classes, disabled=disabled)
-        self.label = label
-        self.value = value
-        self.info = info
-
-    def compose(self) -> ComposeResult:
-        yield Horizontal(Label(self.label), CursoredText(info=self.info, value=self.value))
+class ResultWrapper(Static):
+    """Empty class to hold each result label-line and overcome scrollbar not appearing issue"""
 
 
 class Requests(Static):
@@ -319,7 +298,7 @@ class AvailabilityUI(App):
     def on_select_changed(self, event: Select.Changed) -> None:
         """A function to issue appropriate request and update status when a Node or when a common time frame is selected"""
         if event.select == self.query_one("#nodes"):
-            if event.value:
+            if event.value and self.query_one("#nodes").value != Select.BLANK:
                 self.query_one("#baseurl").add_class("hide") # hide user typing URL input if has chosen to select from dropdown
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nChecking {event.value}availability/1/query')
                 self.query_one("#status-container").scroll_end()
@@ -535,7 +514,8 @@ class AvailabilityUI(App):
                     infos[key].append((str(len(traces_qual[key][0])-1), (start_frame+(span+0.5)*span_frame).strftime("%Y-%m-%dT%H:%M:%S"), "", ""))
         for k in lines:
             infos[k].append(("", "", "", "")) # because cursor can go one character after the end of the input
-            self.query_one('#results-container').mount(ResultItem(label=k, value=lines[k], info=infos[k]))
+            self.query_one('#results-container').mount(ResultWrapper(id=k))
+            self.query_one(f"#{k}").mount(Horizontal(Label(k), CursoredText(value=lines[k], info=infos[k])))
         if self.query(CursoredText):
             self.query(CursoredText)[0].focus()
 
