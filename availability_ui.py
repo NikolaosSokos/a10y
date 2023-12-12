@@ -12,12 +12,12 @@ from rich.text import Text
 
 # TODOS:
 #  - how to lose focus from all elements
-#  - find what to do with timestamps in lines
-#  - implememnt bindings (up and down arrows reserved for scrolling, use tab and shift+tab instead): pending /, pageUp, pageDown, Enter
+#  - implememnt bindings: pending /, pageUp, pageDown, Enter
 #  - see the issues
-#  - automatically scroll down at status
+#  - possible bad thing: in case long gap ends in middle of span and trace starts I print a dash as if there was no gap
 #  - could have all nslc labels in a Container and the same for lines and then these containers into a Horizontal
-#  - could make new classes of inputs and selections to make them smaller in height to have a smaller request control box
+#  - problem: can't focus in the first line cause can't find inner items of ResultItem through queries (which does not make sense)
+#  - could make new classes of inputs and selections to make them smaller in height to have a smaller request control box (or simply try to override their css)
 
 
 class CursoredText(Input):
@@ -57,53 +57,57 @@ class CursoredText(Input):
         if event.is_printable:
             if event.character == 'C':
                 nslc = self.parent.query_one(Label).renderable.split('_')
-                self.parent.parent.parent.query_one("#network").value = str(nslc[0])
-                self.parent.parent.parent.query_one("#station").value = str(nslc[1])
-                self.parent.parent.parent.query_one("#location").value = str(nslc[2])
-                self.parent.parent.parent.query_one("#channel").value = str(nslc[3])
+                self.parent.parent.parent.parent.parent.query_one("#network").value = str(nslc[0])
+                self.parent.parent.parent.parent.parent.query_one("#station").value = str(nslc[1])
+                self.parent.parent.parent.parent.parent.query_one("#location").value = str(nslc[2])
+                self.parent.parent.parent.parent.parent.query_one("#channel").value = str(nslc[3])
             elif event.character == 'S':
-                self.parent.parent.parent.query_one("#start").value = self.info[self.cursor_position][1]
+                self.parent.parent.parent.parent.parent.query_one("#start").value = self.info[self.cursor_position][1]
             elif event.character == 'E':
-                self.parent.parent.parent.query_one("#end").value = self.info[self.cursor_position][1]
+                self.parent.parent.parent.parent.parent.query_one("#end").value = self.info[self.cursor_position][1]
             elif event.character == 'n':
                 temp1 = self.value.find(' ', self.cursor_position)
                 temp2 = self.value.find('╌', self.cursor_position)
                 temp3 = self.value.find('┄', self.cursor_position)
-                temp = min(temp1, temp2, temp3)
-                if temp > -1 and temp + 1 <= len(self.value):
-                    self.cursor_position = temp + 1
-                    if self.info[self.cursor_position][1]:
-                        if self.value[self.cursor_position] == '─':
-                            self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
-                        elif self.value[self.cursor_position] == ' ':
-                            self.parent.parent.query_one("#info-bar").update(f"Quality:     Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
+                if max(temp1, temp2, temp3) != -1:
+                    temp = min([n for n in (temp1, temp2, temp3) if n >= 0])
+                    temp = self.value.find('─', temp)
+                    if temp != -1:
+                        self.cursor_position = temp
+                        if self.info[self.cursor_position][1]:
+                            if self.value[self.cursor_position] == '─':
+                                self.parent.parent.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+                            elif self.value[self.cursor_position] == ' ':
+                                self.parent.parent.parent.parent.query_one("#info-bar").update(f"Quality:     Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
+                            else:
+                                self.parent.parent.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
                         else:
-                            self.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
-                    else:
-                        self.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
+                            self.parent.parent.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
             elif event.character == 'p':
                 temp1 = self.value.rfind(' ', 0, self.cursor_position)
                 temp2 = self.value.rfind('╌', 0, self.cursor_position)
                 temp3 = self.value.rfind('┄', 0, self.cursor_position)
                 temp = max(temp1, temp2, temp3)
-                if temp - 1 >= 0:
-                    temp1 = self.value.rfind(' ', 0, temp)
-                    temp2 = self.value.rfind('╌', 0, temp)
-                    temp3 = self.value.rfind('┄', 0, temp)
-                    temp = max(temp1, temp2, temp3)
-                    if temp > -1 and temp - 1 >= 0:
-                        self.cursor_position = temp + 1
-                    elif temp == -1 and self.cursor_position > 0:
-                        self.cursor_position = 0
-                    if self.info[self.cursor_position][1]:
-                        if self.value[self.cursor_position] == '─':
-                            self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
-                        elif self.value[self.cursor_position] == ' ':
-                            self.parent.parent.query_one("#info-bar").update(f"Quality:     Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
+                if temp != -1:
+                    temp = self.value.rfind('─', 0, temp)
+                    if temp != -1:
+                        temp1 = self.value.rfind(' ', 0, temp)
+                        temp2 = self.value.rfind('╌', 0, temp)
+                        temp3 = self.value.rfind('┄', 0, temp)
+                        temp = max(temp1, temp2, temp3)
+                        if temp == -1:
+                            self.cursor_position = 0
                         else:
-                            self.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
-                    else:
-                        self.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
+                            self.cursor_position = temp + 1
+                        if self.info[self.cursor_position][1]:
+                            if self.value[self.cursor_position] == '─':
+                                self.parent.parent.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+                            elif self.value[self.cursor_position] == ' ':
+                                self.parent.parent.parent.parent.query_one("#info-bar").update(f"Quality:     Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
+                            else:
+                                self.parent.parent.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
+                        else:
+                            self.parent.parent.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
             event.stop()
             assert event.character is not None
             event.prevent_default()
@@ -119,13 +123,13 @@ class CursoredText(Input):
             self.parent.post_message(events.DescendantFocus(self))
         if self.info[self.cursor_position][1]:
             if self.value[self.cursor_position] == '─':
-                self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+                self.parent.parent.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
             elif self.value[self.cursor_position] == ' ':
-                self.parent.parent.query_one("#info-bar").update(f"Quality:     Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
+                self.parent.parent.parent.parent.query_one("#info-bar").update(f"Quality:     Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
             else:
-                self.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
+                self.parent.parent.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
         else:
-            self.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
+            self.parent.parent.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
         event.prevent_default()
 
     def _on_paste(self, event: events.Paste) -> None:
@@ -136,25 +140,25 @@ class CursoredText(Input):
         super().action_cursor_right()
         if self.info[self.cursor_position][1]:
             if self.value[self.cursor_position] == '─':
-                self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+                self.parent.parent.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
             elif self.value[self.cursor_position] == ' ':
-                self.parent.parent.query_one("#info-bar").update(f"Quality:     Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
+                self.parent.parent.parent.parent.query_one("#info-bar").update(f"Quality:     Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
             else:
-                self.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
+                self.parent.parent.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
         else:
-            self.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
+            self.parent.parent.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
 
     def action_cursor_left(self) -> None:
         super().action_cursor_left()
         if self.info[self.cursor_position][1]:
             if self.value[self.cursor_position] == '─':
-                self.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+                self.parent.parent.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
             elif self.value[self.cursor_position] == ' ':
-                self.parent.parent.query_one("#info-bar").update(f"Quality:     Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
+                self.parent.parent.parent.parent.query_one("#info-bar").update(f"Quality:     Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
             else:
-                self.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
+                self.parent.parent.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start:                       Trace end:                    ")
         else:
-            self.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
+            self.parent.parent.parent.parent.query_one("#info-bar").update("Quality:     Timestamp:                       Trace start:                       Trace end:                    ")
 
     def action_delete_right(self) -> None:
         pass
@@ -173,6 +177,29 @@ class CursoredText(Input):
 
     def action_delete_left_all(self) -> None:
         pass
+
+
+class ResultItem(Static):
+    """Result items widget that consists of a Label and a CursoredText widget side by side"""
+
+    DEFAULT_CSS = """
+    CursoredText {
+        margin-left: 2;
+    }
+    """
+
+    label = ""
+    value = ""
+    info = []
+
+    def __init__(self, label=None, value=None, info=[], name= None, id = None, classes = None, disabled = False):
+        super().__init__(name=name, id=id, classes=classes, disabled=disabled)
+        self.label = label
+        self.value = value
+        self.info = info
+
+    def compose(self) -> ComposeResult:
+        yield Horizontal(Label(self.label), CursoredText(info=self.info, value=self.value))
 
 
 class Requests(Static):
@@ -295,21 +322,27 @@ class AvailabilityUI(App):
             if event.value:
                 self.query_one("#baseurl").add_class("hide") # hide user typing URL input if has chosen to select from dropdown
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nChecking {event.value}availability/1/query')
+                self.query_one("#status-container").scroll_end()
                 r = requests.get(event.value+"availability/1/query")
                 if 'availability' in r.text:
                     # get available networks from FDSN
                     self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving Networks from {event.value}station/1/query?level=network&format=text')
+                    self.query_one("#status-container").scroll_end()
                     r = requests.get(event.value+"station/1/query?level=network&format=text")
                     if r.status_code != 200:
                         self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve Networks from {event.value}station/1/query?level=network&format=text[/red]')
+                        self.query_one("#status-container").scroll_end()
                     else:
                         self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved Networks from {event.value}station/1/query?level=network&format=text[/green]')
+                        self.query_one("#status-container").scroll_end()
                         autocomplete_nets = self.query_one("#networks")
                         autocomplete_nets.items = [DropdownItem(n.split('|')[0]) for n in r.text.splitlines()[1:]]
                 else:
                     self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Availability URL is not valid[/red]')
+                    self.query_one("#status-container").scroll_end()
             else:
                 self.query_one("#baseurl").remove_class("hide") # show input for typing URL if user does not want to select from dropdown
+                self.query_one("#status-container").scroll_end()
 
         if event.select == self.query_one("#times"):
             start = self.query_one("#start")
@@ -349,29 +382,37 @@ class AvailabilityUI(App):
         # for typing availability endpoint URL
         if event.input == self.query_one("#baseurl"):
             self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nChecking {event.value}')
+            self.query_one("#status-container").scroll_end()
             try:
                 r = requests.get(event.value)
             except (requests.exceptions.InvalidURL, requests.exceptions.MissingSchema, requests.exceptions.ConnectionError):
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Invalid availability URL[/red]')
+                self.query_one("#status-container").scroll_end()
                 return None
             if r.status_code == 400 and 'availability' in r.text:
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Valid availability URL[/green]')
+                self.query_one("#status-container").scroll_end()
             else:
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Invalid availability URL[/red]')
+                self.query_one("#status-container").scroll_end()
         # for typing network
         elif event.input == self.query_one("#network"):
             # handle case of submitting without having selected Node
             if self.query_one('#nodes').value is None:
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Please select a Node[/red]')
+                self.query_one("#status-container").scroll_end()
                 return None
             # get available stations from FDSN
             net = self.query_one('#network').value
             self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving Stations from {self.query_one("#nodes").value}station/1/query?{"network="+net if net else ""}&format=text')
+            self.query_one("#status-container").scroll_end()
             r = requests.get(f"{self.query_one('#nodes').value}station/1/query?{'network='+net if net else ''}&format=text")
             if r.status_code != 200:
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve Stations from {self.query_one("#nodes").value}station/1/query?{"network="+net if net else ""}&format=text[/red]')
+                self.query_one("#status-container").scroll_end()
             else:
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved Stations from {self.query_one("#nodes").value}station/1/query?{"network="+net if net else ""}&format=text[/green]')
+                self.query_one("#status-container").scroll_end()
                 autocomplete = self.query_one("#stations")
                 autocomplete.items = [DropdownItem(s.split('|')[1]) for s in r.text.splitlines()[1:]]
         # for typing station
@@ -379,16 +420,20 @@ class AvailabilityUI(App):
             # handle case of submitting without having selected Node
             if self.query_one('#nodes').value is None:
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Please select a Node[/red]')
+                self.query_one("#status-container").scroll_end()
                 return None
             # get available channels from FDSN
             net = self.query_one('#network').value
             sta = self.query_one('#station').value
             self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving Channels from {self.query_one("#nodes").value}station/1/query?{"network="+net if net else ""}{"&station="+sta if sta else ""}&level=channel&format=text')
+            self.query_one("#status-container").scroll_end()
             r = requests.get(f"{self.query_one('#nodes').value}station/1/query?{'network='+net if net else ''}{'&station='+sta if sta else ''}&level=channel&format=text")
             if r.status_code != 200:
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve Channels from {self.query_one("#nodes").value}station/1/query?{"network="+net if net else ""}{"&station="+sta if sta else ""}&level=channel&format=text[/red]')
+                self.query_one("#status-container").scroll_end()
             else:
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved Channels from {self.query_one("#nodes").value}station/1/query?{"network="+net if net else ""}{"&station="+sta if sta else ""}&level=channel&format=text[/green]')
+                self.query_one("#status-container").scroll_end()
                 autocomplete = self.query_one("#channels")
                 autocomplete.items = [DropdownItem(unique) for unique in {c.split('|')[3] for c in r.text.splitlines()[1:]}]
 
@@ -399,8 +444,8 @@ class AvailabilityUI(App):
             # clear previous results
             if self.query('#info-bar'):
                 self.query_one('#info-bar').remove()
-            for r in self.query('.result-container'):
-                r.remove()
+            if self.query('#results-container'):
+                self.query_one('#results-container').remove()
             # build request
             node = self.query_one("#nodes").value if self.query_one("#nodes").value != Select.BLANK else None
             net = self.query_one("#network").value
@@ -414,23 +459,29 @@ class AvailabilityUI(App):
             quality = ",".join([q for q, bool in zip(['D', 'R', 'Q', 'M'], [self.query_one("#qd").value, self.query_one("#qr").value, self.query_one("#qq").value, self.query_one("#qm").value]) if bool])
             request = f"{node+'availability/1/query' if node else self.query_one('#baseurl').value}?format=geocsv{'&network='+net if net else ''}{'&station='+sta if sta else ''}{'&location='+loc if loc else ''}{'&channel='+cha if cha else ''}{'&starttime='+start if start else ''}{'&endtime='+end if end else ''}{'&merge='+merge if merge else ''}{'&quality='+quality if quality else ''}{'&mergegaps='+mergegaps if mergegaps else ''}"
             self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nIssuing request {request}')
+            self.query_one("#status-container").scroll_end()
             try:
                 r = requests.get(request)
             except (requests.exceptions.InvalidURL, requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema, requests.exceptions.ConnectionError):
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Please provide a valid availability URL[/red]')
+                self.query_one("#status-container").scroll_end()
                 return None
             if r.status_code == 204:
                 self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]No data available[/red]')
+                self.query_one("#status-container").scroll_end()
             elif r.status_code != 200:
                 self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]{r.text}[/red]')
+                self.query_one("#status-container").scroll_end()
             else:
                 self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[green]Request successfully returned data[/green]')
+                self.query_one("#status-container").scroll_end()
                 self.show_results(r.text.splitlines()[5:])
 
 
     def show_results(self, csv_results):
         infoBar = Static("Quality:     Timestamp:                       Trace start:                       Trace end:                    ", id="info-bar")
         self.query_one('#results-widget').mount(infoBar)
+        self.query_one('#results-widget').mount(ScrollableContainer(id="results-container"))
         # cut time frame into desired number of spans to see for how many of them a trace lasts
         num_spans = 130
         start_frame = datetime.strptime(self.query_one("#start").value, "%Y-%m-%dT%H:%M:%S")
@@ -484,27 +535,9 @@ class AvailabilityUI(App):
                     infos[key].append((str(len(traces_qual[key][0])-1), (start_frame+(span+0.5)*span_frame).strftime("%Y-%m-%dT%H:%M:%S"), "", ""))
         for k in lines:
             infos[k].append(("", "", "", "")) # because cursor can go one character after the end of the input
-            self.query_one('#results-widget').mount(Horizontal(Label(k), CursoredText(value=lines[k], info=infos[k], classes="result-item"), classes="result-container", id=k))
-        if self.query(".result-item"):
-            self.query(".result-item")[0].focus()
-        """
-        for row in csv_results:
-            parts = row.split('|')
-            key = f"{parts[0]}_{parts[1]}_{parts[2]}_{parts[3]}"
-            start_trace = datetime.strptime(parts[6], "%Y-%m-%dT%H:%M:%S.%fZ")
-            end_trace = datetime.strptime(parts[7], "%Y-%m-%dT%H:%M:%S.%fZ")
-            spans_trace = (end_trace - start_trace).total_seconds() / span_frame
-            spans_trace = 1 if spans_trace < 1 else round(spans_trace)
-            if parts[4] == 'D':
-                traces[key] = traces.get(key, "") + "[yellow]" + "─"*spans_trace + "[/yellow]" + " "
-            elif parts[4] == 'R':
-                traces[key] = traces.get(key, "") + "[grey37]" + "─"*spans_trace + "[/gray37]" + " "
-            elif parts[4] == 'Q':
-                traces[key] = traces.get(key, "") + "[orchid]" + "─"*spans_trace + "[/orchid]" + " "
-            elif parts[4] == 'M':
-                traces[key] = traces.get(key, "") + "[cyan]" + "─"*spans_trace + "[/cyan]" + " "
-            infos[key] = infos.get(key, []) + [(parts[4], "some_timestamp     " , parts[6][:19], parts[7][:19]) for st in range(spans_trace)] + [("", "", "", "")]
-        """
+            self.query_one('#results-container').mount(ResultItem(label=k, value=lines[k], info=infos[k]))
+        if self.query(CursoredText):
+            self.query(CursoredText)[0].focus()
 
 
     def action_unfocus_input(self) -> None:

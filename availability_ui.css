@@ -12,7 +12,7 @@ Screen {
 }
 
 Status {
-    max-height: 7;
+  max-height: 7;
 }
 
 #status-container {
@@ -89,11 +89,14 @@ Requests {
   margin: 1 0 0 1;
 }
 
-.result-item {
-  margin-left: 2;
+ResultItem {
+  max-height: 1;
 }
 
-.result-container {
-  margin-left: 1;
-  max-height: 1;
+#results-container {
+  margin: 1 0 0 1;
+}
+
+Results {
+  max-height: 30;
 }
