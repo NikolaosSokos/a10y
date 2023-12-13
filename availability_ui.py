@@ -183,6 +183,19 @@ class ResultWrapper(Static):
     """Empty class to hold each result label-line and overcome scrollbar not appearing issue"""
 
 
+class Explanations(Static):
+    """Explanations box with common key functions"""
+
+    def compose(self) -> ComposeResult:
+        yield Static("Explanations")
+        yield Static(
+"""[gold3]ctrl+c[/gold3]: close app                [gold3]enter[/gold3]: send request if button is focused  [gold3]tab/shif+tab[/gold3]: focus next/previous item or channel
+[gold3]ctrl+b[/gold3]: focus button             [gold3]ctl+t/ctr+l[/gold3]: jump to first/last channel   [gold3]up/down/pgUp/pgDown[/gold3]: scroll up/down if in a scrollable item
+[gold3]right/left[/gold3]: move cursor on line  [gold3]home/end[/gold3]: jump to beginning/end of line   [gold3]S[/gold3]: capture timestamp under cursor as Start Time
+[gold3]C[/gold3]: capture n_s_l_c under cursor  [gold3]n/p[/gold3]: jump to next/previous trace of line  [gold3]E[/gold3]: capture timestamp under cursor as End Time""",
+            id="explanations-keys")
+
+
 class Requests(Static):
     """Web service request control widget"""
 
@@ -296,7 +309,7 @@ class AvailabilityUI(App):
         self.title = "Availability UI"
         yield Header()
         yield ScrollableContainer(
-            Static("Explanations", classes="box"),
+            Explanations(classes="box"),
             Requests(classes="box"),
             Status(classes="box"),
             Results(classes="box", id="results-widget")
