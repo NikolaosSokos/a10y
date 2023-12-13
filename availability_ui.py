@@ -1,21 +1,23 @@
 from textual import events
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, ScrollableContainer
-from textual.widgets import Static, Label, Select, Input, Checkbox, Button, DataTable, Header
-from textual.coordinate import Coordinate
+from textual.widgets import Static, Label, Select, Input, Checkbox, Button, Header
 from textual_autocomplete import AutoComplete, Dropdown, DropdownItem
 import requests
 from datetime import datetime, timedelta
-from typing import List
 from rich.text import Text
+import os
+import sys
+import logging
 
 
 # TODOS:
 #  - how to lose focus from all elements
-#  - implememnt bindings: pending /, pageUp, pageDown, Enter
+#  - implememnt bindings: pending /
 #  - see the issues
 #  - possible bad thing: in case long gap ends in middle of span and trace starts I print a dash as if there was no gap
 #  - could have all nslc labels in a Container and the same for lines and then these containers into a Horizontal (but doesn't work)
+#  - can't change color of scrollbar when ScrollableContainer is focused (actually cannot change it back on blur)
 
 
 class CursoredText(Input):
@@ -54,7 +56,7 @@ class CursoredText(Input):
     async def _on_key(self, event: events.Key) -> None:
         if event.is_printable:
             if event.character == 'C':
-                nslc = self.parent.query_one(Label).renderable.split('_')
+                nslc = self.id.split('_')
                 self.parent.parent.parent.parent.parent.query_one("#network").value = str(nslc[0])
                 self.parent.parent.parent.parent.parent.query_one("#station").value = str(nslc[1])
                 self.parent.parent.parent.parent.parent.query_one("#location").value = str(nslc[2])
@@ -233,9 +235,9 @@ class Requests(Static):
         )
         yield Horizontal(
             Label("Start Time:", classes="request-label"),
-            Input(classes="date-input", id="start", value=(datetime.now() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S")),
+            Input(classes="date-input", id="start", value=default_starttime),
             Label("End Time:", classes="request-label"),
-            Input(classes="date-input", id="end", value=datetime.now().strftime("%Y-%m-%dT%H:%M:%S")),
+            Input(classes="date-input", id="end", value=default_endtime),
             Select([
                 ("last 24 hours", 1),
                 ("last 2 days", 2),
@@ -249,19 +251,19 @@ class Requests(Static):
         )
         yield Horizontal(
             Label("Merge Options:", classes="request-label"),
-            Checkbox("Samplerate", id="samplerate"),
-            Checkbox("Quality", id="qual"),
-            Checkbox("Overlap", id="overlap", value=True),
+            Checkbox("Samplerate", default_merge_samplerate, id="samplerate"),
+            Checkbox("Quality", default_merge_quality, id="qual"),
+            Checkbox("Overlap", default_merge_overlap, id="overlap"),
             id="merge"
         )
         yield Horizontal(
             Label("Mergegaps:", classes="request-label"),
-            Input(value="0.0", type="number", classes="short-input", id="mergegaps"),
+            Input(value=default_mergegaps, type="number", classes="short-input", id="mergegaps"),
             Label("Quality:", classes="request-label"),
-            Checkbox("D", True, id="qd"),
-            Checkbox("R", True, id="qr"),
-            Checkbox("Q", True, id="qq"),
-            Checkbox("M", True, id="qm"),
+            Checkbox("D", default_quality_D, id="qd"),
+            Checkbox("R", default_quality_R, id="qr"),
+            Checkbox("Q", default_quality_Q, id="qq"),
+            Checkbox("M", default_quality_M, id="qm"),
             id="gaps-quality"
         )
 
@@ -283,7 +285,12 @@ class Results(Static):
 
 class AvailabilityUI(App):
     CSS_PATH = "availability_ui.css"
-    BINDINGS = [("escape", "unfocus_input", "Lose input focus"),]
+    BINDINGS = [
+        ("escape", "unfocus_input", "Lose input focus"),
+        ("ctrl+t", "first_line", "Move to first line"),
+        ("ctrl+l", "last_line", "Move to last line"),
+        ("ctrl+b", "button_focus", "Focus button"),
+    ]
 
     def compose(self) -> ComposeResult:
         self.title = "Availability UI"
@@ -512,12 +519,32 @@ class AvailabilityUI(App):
                 else:
                     lines[key] += '┄'
                     infos[key].append((str(len(traces_qual[key][0])-1), (start_frame+(span+0.5)*span_frame).strftime("%Y-%m-%dT%H:%M:%S"), "", ""))
+        # find longest label to align start of lines
+        longest_label = max([len(k) for k in lines.keys()])
         for k in lines:
             infos[k].append(("", "", "", "")) # because cursor can go one character after the end of the input
             self.query_one('#results-container').mount(ResultWrapper(id=k))
-            self.query_one(f"#{k}").mount(Horizontal(Label(k), CursoredText(value=lines[k], info=infos[k])))
+            self.query_one(f"#{k}").mount(Horizontal(Label(f"{k}{' '*(longest_label-len(k))}"), CursoredText(value=lines[k], info=infos[k], id=k)))
         if self.query(CursoredText):
             self.query(CursoredText)[0].focus()
+
+
+    def action_first_line(self) -> None:
+        """An action to move focus to the first line"""
+        if self.query(CursoredText):
+            self.query(CursoredText)[0].focus()
+
+
+    def action_last_line(self) -> None:
+        """An action to move focus to the last line"""
+        if self.query(CursoredText):
+            self.query(CursoredText)[-1].focus()
+
+
+    def action_button_focus(self) -> None:
+        """An action to move focus to the button which sends request"""
+        if self.query_one("#request-button"):
+            self.query_one("#request-button").focus()
 
 
     def action_unfocus_input(self) -> None:
@@ -527,5 +554,83 @@ class AvailabilityUI(App):
 
 
 if __name__ == "__main__":
+    # use below defaults or take them from config file if exists
+    default_starttime = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S")
+    default_endtime = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    default_quality_D = True
+    default_quality_R = True
+    default_quality_Q = True
+    default_quality_M = True
+    default_mergegaps = "0.0"
+    default_merge_samplerate = False
+    default_merge_quality = False
+    default_merge_overlap = True
+
+    config_dir = os.getenv("XDG_CONFIG_DIR", ".")
+    config_file = os.path.join(config_dir, "config.toml")
+    if os.path.isfile(config_file):
+        with open(config_file, 'r') as f:
+            for line in f.readlines():
+                parts = line.split()
+                try:
+                    x = parts[0]
+                except:
+                    continue
+                if parts[0] == "starttime":
+                    try:
+                        num = int(parts[1])
+                        default_starttime = (datetime.now() - timedelta(days=num)).strftime("%Y-%m-%dT%H:%M:%S")
+                    except:
+                        try:
+                            datetime.strptime(parts[1], "%Y-%m-%dT%H:%M:%S")
+                            default_starttime = parts[1]
+                        except:
+                            logging.error(f"Invalid starttime format in config file {config_file}")
+                            sys.exit(1)
+                elif parts[0] == "endtime":
+                    if parts[1] == "now":
+                        pass
+                    else:
+                        try:
+                            datetime.strptime(parts[1], "%Y-%m-%dT%H:%M:%S")
+                            default_endtime = parts[1]
+                        except:
+                            logging.error(f"Invalid endtime format in config file {config_file}")
+                            sys.exit(1)
+                elif parts[0] == "quality":
+                    quals = parts[1].split(',')
+                    if any([q not in ['D', 'R', 'Q', 'M'] for q in quals]):
+                        logging.error(f"Invalid quality codes format in config file {config_file}")
+                        sys.exit(1)
+                    if 'D' not in quals:
+                        default_quality_D = False
+                    if 'R' not in quals:
+                        default_quality_R = False
+                    if 'Q' not in quals:
+                        default_quality_Q = False
+                    if 'M' not in quals:
+                        default_quality_M = False
+                elif parts[0] == "mergegaps":
+                    try:
+                        num = float(parts[1])
+                    except:
+                        logging.error(f"Invalid mergegaps format in config file {config_file}")
+                        sys.exit(1)
+                    default_mergegaps = str(num)
+                elif parts[0] == "merge":
+                    merges = parts[1].split(',')
+                    if any([m not in ['samplerate', 'quality', 'overlap'] for m in merges]):
+                        logging.error(f"Invalid merge options format in config file {config_file}")
+                        sys.exit(1)
+                    if 'samplerate' in merges:
+                        default_merge_samplerate = True
+                    if 'quality' in merges:
+                        default_merge_quality = True
+                    if 'overlap' not in merges:
+                        default_merge_overlap = False
+                else:
+                    logging.error(f"Invalid default '{parts[0]}' in config file '{config_file}'")
+                    sys.exit(1)
+
     app = AvailabilityUI()
     app.run()
