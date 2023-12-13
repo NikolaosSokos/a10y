@@ -18,6 +18,7 @@ import logging
 #  - possible bad thing: in case long gap ends in middle of span and trace starts I print a dash as if there was no gap
 #  - could have all nslc labels in a Container and the same for lines and then these containers into a Horizontal (but doesn't work)
 #  - can't change color of scrollbar when ScrollableContainer is focused (actually cannot change it back on blur)
+#  - smaller inputs: padding is why I failed previou
 
 
 class CursoredText(Input):
@@ -177,10 +178,6 @@ class CursoredText(Input):
 
     def action_delete_left_all(self) -> None:
         pass
-
-
-class ResultWrapper(Static):
-    """Empty class to hold each result label-line and overcome scrollbar not appearing issue"""
 
 
 class Explanations(Static):
@@ -536,8 +533,7 @@ class AvailabilityUI(App):
         longest_label = max([len(k) for k in lines.keys()])
         for k in lines:
             infos[k].append(("", "", "", "")) # because cursor can go one character after the end of the input
-            self.query_one('#results-container').mount(ResultWrapper(id=k))
-            self.query_one(f"#{k}").mount(Horizontal(Label(f"{k}{' '*(longest_label-len(k))}"), CursoredText(value=lines[k], info=infos[k], id=k)))
+            self.query_one('#results-container').mount(Horizontal(Label(f"{k}{' '*(longest_label-len(k))}"), CursoredText(value=lines[k], info=infos[k], id=k), classes="result-item"))
         if self.query(CursoredText):
             self.query(CursoredText)[0].focus()
 

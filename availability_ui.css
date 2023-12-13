@@ -93,8 +93,8 @@ Requests {
   margin: 1 0 0 1;
 }
 
-ResultWrapper {
-  max-height: 1;
+.result-item {
+  height: auto;
 }
 
 #results-container {
