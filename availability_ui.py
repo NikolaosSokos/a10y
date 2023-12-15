@@ -16,7 +16,7 @@ import logging
 #  - implememnt / binding
 #  - see the issues
 #  - possible bad thing: in case long gap ends in middle of span and trace starts I print a dash as if there was no gap
-#  - too few results => extra space in results up to height 30, making height auto => no scrollbar when many results
+#  - README, pyinstaller
 
 
 class CursoredText(Input):

@@ -88,10 +88,6 @@ Status {
   margin-left: 2;
 }
 
-Results {
-  max-height: 30;
-}
-
 ContentSwitcher {
   margin-left: 2;
 }
@@ -101,7 +97,17 @@ ContentSwitcher {
 }
 
 #lines {
-  max-height: 27;
+  height: auto;
+}
+
+#results-container {
+  max-height: 29;
+  height: auto;
+}
+
+#plain-container {
+  max-height: 30;
+  height: auto;
 }
 
 .result-item {
