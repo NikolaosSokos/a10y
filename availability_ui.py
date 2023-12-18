@@ -55,61 +55,114 @@ class CursoredText(Input):
         """Flag to indicate if the cursor is at the end"""
         return self.cursor_position >= len(self.value) - 1
 
+    def update_info_bar(self) -> None:
+        """Update info bar when cursor moves"""
+        if self.info[self.cursor_position][1]:
+            if self.value[self.cursor_position] == ' ':
+                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gap          Timestamp: {self.info[self.cursor_position][1]} ")
+            elif self.info[self.cursor_position][0].isdigit():
+                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}      Timestamp: {self.info[self.cursor_position][1]}    Gaps start: {self.info[self.cursor_position][2]}    Gaps end: {self.info[self.cursor_position][3]} ")
+            else:
+                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
+        else:
+            self.parent.parent.parent.parent.parent.query_one("#info-bar").update("")
+
     async def _on_key(self, event: events.Key) -> None:
         if event.is_printable:
-            if event.character == 'C':
+            # capture nslc
+            if event.character == 'c':
                 nslc = self.id.split('_')
                 self.parent.parent.parent.parent.parent.parent.query_one("#network").value = str(nslc[0])
                 self.parent.parent.parent.parent.parent.parent.query_one("#station").value = str(nslc[1])
                 self.parent.parent.parent.parent.parent.parent.query_one("#location").value = str(nslc[2])
                 self.parent.parent.parent.parent.parent.parent.query_one("#channel").value = str(nslc[3])
-            elif event.character == 'S':
+            # capture start time
+            elif event.character == 's':
                 self.parent.parent.parent.parent.parent.parent.query_one("#start").value = self.info[self.cursor_position][1]
-            elif event.character == 'E':
+            # capture end time
+            elif event.character == 'e':
                 self.parent.parent.parent.parent.parent.parent.query_one("#end").value = self.info[self.cursor_position][1]
+            # toggle results view
+            elif event.character == 't':
+                # self.parent.parent.parent.parent = ContentSwitcher
+                self.parent.parent.parent.parent.current = "plain-container"
+                if self.parent.parent.parent.parent.parent.parent.parent.focused in self.parent.parent.query(CursoredText):
+                    active_nslc = self.parent.parent.parent.parent.parent.parent.parent.focused.id.split('_')
+                    text = req.text.splitlines()
+                    new_text = '\n'.join(text[:5])
+                    for row in text[5:]:
+                        parts = row.split('|')
+                        if all([p == an for (p, an) in zip(parts, active_nslc)]):
+                            new_text += '\n' + row
+                    self.parent.parent.parent.parent.query_one("#plain").update(new_text)
+            # move to next trace
             elif event.character == 'n':
                 temp1 = self.value.find(' ', self.cursor_position)
                 temp2 = self.value.find('╌', self.cursor_position)
                 temp3 = self.value.find('┄', self.cursor_position)
-                if max(temp1, temp2, temp3) != -1:
-                    temp = min([n for n in (temp1, temp2, temp3) if n >= 0])
-                    temp = self.value.find('─', temp)
-                    if temp != -1:
-                        self.cursor_position = temp
-                        if self.info[self.cursor_position][1]:
-                            if self.value[self.cursor_position] == ' ':
-                                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gap          Timestamp: {self.info[self.cursor_position][1]} ")
-                            elif self.info[self.cursor_position][0].isdigit():
-                                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}      Timestamp: {self.info[self.cursor_position][1]}    Gaps start: {self.info[self.cursor_position][2]}    Gaps end: {self.info[self.cursor_position][3]} ")
-                            else:
-                                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
-                        else:
-                            self.parent.parent.parent.parent.parent.query_one("#info-bar").update("")
+                temp4 = self.value.find('┗', self.cursor_position + 1)
+                temp5 = self.value.find('┛', self.cursor_position)
+                if max(temp1, temp2, temp3, temp4, temp5) != -1:
+                    temp = min([n for n in (temp1, temp2, temp3, temp4, temp5) if n >= 0])
+                    temp1 = self.value.find('━', temp)
+                    temp2 = self.value.find('┗', temp + 1)
+                    temp3 = self.value.find('┛', temp + 1)
+                    if max(temp1, temp2, temp3) != -1:
+                        self.cursor_position = min([n for n in (temp1, temp2, temp3) if n >= 0])
+                    else:
+                        self.parent.parent.parent.parent.parent.parent.parent.parent.action_focus_next()
+                        try:
+                            self.parent.parent.parent.parent.parent.parent.parent.parent.focused.action_home()
+                        except AttributeError:
+                            last = self.parent.parent.parent.parent.parent.parent.query(CursoredText)[-1]
+                            last.focus()
+                            last.action_end()
+                else:
+                    self.parent.parent.parent.parent.parent.parent.parent.parent.action_focus_next()
+                    try:
+                        self.parent.parent.parent.parent.parent.parent.parent.parent.focused.action_home()
+                    except AttributeError:
+                        last = self.parent.parent.parent.parent.parent.parent.query(CursoredText)[-1]
+                        last.focus()
+                        last.action_end()
+                self.update_info_bar()
+            # move to previous trace
             elif event.character == 'p':
-                temp1 = self.value.rfind(' ', 0, self.cursor_position)
-                temp2 = self.value.rfind('╌', 0, self.cursor_position)
-                temp3 = self.value.rfind('┄', 0, self.cursor_position)
-                temp = max(temp1, temp2, temp3)
+                temp1 = self.value.rfind(' ', 0, self.cursor_position + 1)
+                temp2 = self.value.rfind('╌', 0, self.cursor_position + 1)
+                temp3 = self.value.rfind('┄', 0, self.cursor_position + 1)
+                temp4 = self.value.rfind('┗', 0, self.cursor_position + 1)
+                temp5 = self.value.rfind('┛', 0, self.cursor_position + 1)
+                temp = max(temp1, temp2, temp3, temp4, temp5)
                 if temp != -1:
-                    temp = self.value.rfind('─', 0, temp)
-                    if temp != -1:
+                    temp1 = self.value.rfind('━', 0, temp)
+                    temp2 = self.value.rfind('┗', 0, temp)
+                    temp3 = self.value.rfind('┛', 0, temp)
+                    if max(temp1, temp2, temp3) != -1:
+                        temp = max([n for n in (temp1, temp2, temp3) if n >= 0])
                         temp1 = self.value.rfind(' ', 0, temp)
                         temp2 = self.value.rfind('╌', 0, temp)
                         temp3 = self.value.rfind('┄', 0, temp)
-                        temp = max(temp1, temp2, temp3)
+                        temp4 = self.value.rfind('┗', 0, temp)
+                        temp5 = self.value.rfind('┛', 0, temp)
+                        temp = max(temp1, temp2, temp3, temp4, temp5)
                         if temp == -1:
                             self.cursor_position = 0
                         else:
-                            self.cursor_position = temp + 1
-                        if self.info[self.cursor_position][1]:
-                            if self.value[self.cursor_position] == ' ':
-                                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gap          Timestamp: {self.info[self.cursor_position][1]} ")
-                            elif self.info[self.cursor_position][0].isdigit():
-                                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}      Timestamp: {self.info[self.cursor_position][1]}    Gaps start: {self.info[self.cursor_position][2]}    Gaps end: {self.info[self.cursor_position][3]} ")
-                            else:
-                                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
-                        else:
-                            self.parent.parent.parent.parent.parent.query_one("#info-bar").update("")
+                            self.cursor_position = temp if self.value[temp] in ['┗', '┛'] else temp + 1
+                    else:
+                        self.parent.parent.parent.parent.parent.parent.parent.parent.action_focus_previous()
+                        try:
+                            self.parent.parent.parent.parent.parent.parent.parent.parent.focused.action_end()
+                        except AttributeError:
+                            self.parent.parent.parent.parent.parent.parent.query(CursoredText)[0].focus()
+                else:
+                    self.parent.parent.parent.parent.parent.parent.parent.parent.action_focus_previous()
+                    try:
+                        self.parent.parent.parent.parent.parent.parent.parent.parent.focused.action_end()
+                    except AttributeError:
+                        self.parent.parent.parent.parent.parent.parent.query(CursoredText)[0].focus()
+                self.update_info_bar()
             event.stop()
             assert event.character is not None
             event.prevent_default()
@@ -123,15 +176,7 @@ class CursoredText(Input):
         self.refresh()
         if self.parent is not None:
             self.parent.post_message(events.DescendantFocus(self))
-        if self.info[self.cursor_position][1]:
-            if self.value[self.cursor_position] == ' ':
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gap          Timestamp: {self.info[self.cursor_position][1]} ")
-            elif self.info[self.cursor_position][0].isdigit():
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}      Timestamp: {self.info[self.cursor_position][1]}    Gaps start: {self.info[self.cursor_position][2]}    Gaps end: {self.info[self.cursor_position][3]} ")
-            else:
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
-        else:
-            self.parent.parent.parent.parent.parent.query_one("#info-bar").update("")
+        self.update_info_bar()
         event.prevent_default()
 
     def _on_paste(self, event: events.Paste) -> None:
@@ -142,51 +187,19 @@ class CursoredText(Input):
         super().action_cursor_right()
         if self.cursor_position >= len(self.value):
             self.cursor_position = len(self.value) - 1
-        if self.info[self.cursor_position][1]:
-            if self.value[self.cursor_position] == ' ':
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gap          Timestamp: {self.info[self.cursor_position][1]} ")
-            elif self.info[self.cursor_position][0].isdigit():
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}      Timestamp: {self.info[self.cursor_position][1]}    Gaps start: {self.info[self.cursor_position][2]}    Gaps end: {self.info[self.cursor_position][3]} ")
-            else:
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
-        else:
-            self.parent.parent.parent.parent.parent.query_one("#info-bar").update("")
+        self.update_info_bar()
 
     def action_cursor_left(self) -> None:
         super().action_cursor_left()
-        if self.info[self.cursor_position][1]:
-            if self.value[self.cursor_position] == ' ':
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gap          Timestamp: {self.info[self.cursor_position][1]} ")
-            elif self.info[self.cursor_position][0].isdigit():
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}      Timestamp: {self.info[self.cursor_position][1]}    Gaps start: {self.info[self.cursor_position][2]}    Gaps end: {self.info[self.cursor_position][3]} ")
-            else:
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
-        else:
-            self.parent.parent.parent.parent.parent.query_one("#info-bar").update("")
+        self.update_info_bar()
 
     def action_home(self) -> None:
         self.cursor_position = 0
-        if self.info[self.cursor_position][1]:
-            if self.value[self.cursor_position] == ' ':
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gap          Timestamp: {self.info[self.cursor_position][1]} ")
-            elif self.info[self.cursor_position][0].isdigit():
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}      Timestamp: {self.info[self.cursor_position][1]}    Gaps start: {self.info[self.cursor_position][2]}    Gaps end: {self.info[self.cursor_position][3]} ")
-            else:
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
-        else:
-            self.parent.parent.parent.parent.parent.query_one("#info-bar").update("")
+        self.update_info_bar()
 
     def action_end(self) -> None:
         self.cursor_position = len(self.value) - 1
-        if self.info[self.cursor_position][1]:
-            if self.value[self.cursor_position] == ' ':
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gap          Timestamp: {self.info[self.cursor_position][1]} ")
-            elif self.info[self.cursor_position][0].isdigit():
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}      Timestamp: {self.info[self.cursor_position][1]}    Gaps start: {self.info[self.cursor_position][2]}    Gaps end: {self.info[self.cursor_position][3]} ")
-            else:
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
-        else:
-            self.parent.parent.parent.parent.parent.query_one("#info-bar").update("")
+        self.update_info_bar()
 
     async def _on_click(self, event: events.Click) -> None:
         offset = event.get_content_offset(self)
@@ -204,15 +217,7 @@ class CursoredText(Input):
             cell_offset += cell_width
         else:
             self.cursor_position = len(self.value) - 1
-        if self.info[self.cursor_position][1]:
-            if self.value[self.cursor_position] == ' ':
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gap          Timestamp: {self.info[self.cursor_position][1]} ")
-            elif self.info[self.cursor_position][0].isdigit():
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}      Timestamp: {self.info[self.cursor_position][1]}    Gaps start: {self.info[self.cursor_position][2]}    Gaps end: {self.info[self.cursor_position][3]} ")
-            else:
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Quality: {self.info[self.cursor_position][0]}   Timestamp: {self.info[self.cursor_position][1]}   Trace start: {self.info[self.cursor_position][2]}   Trace end: {self.info[self.cursor_position][3]} ")
-        else:
-            self.parent.parent.parent.parent.parent.query_one("#info-bar").update("")
+        self.update_info_bar()
 
     def action_delete_right(self) -> None:
         pass
@@ -336,7 +341,7 @@ class Status(Static):
 
     def compose(self) -> ComposeResult:
         yield Static("[b]Status[/b]")
-        yield ScrollableContainer(Static(f'Current session started at {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', id="status-line"), id="status-container")
+        yield ScrollableContainer(Static(f'Welcome to Availability UI application version 1.0! 🙂\nCurrent session started at {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', id="status-line"), id="status-container")
 
 
 class Results(Static):
@@ -350,9 +355,9 @@ class AvailabilityUI(App):
     CSS_PATH = "availability_ui.css"
     BINDINGS = [
         ("ctrl+t", "first_line", "Move to first line"),
-        ("ctrl+l", "last_line", "Move to last line"),
-        ("ctrl+b", "button_focus", "Focus button"),
-        ("ctrl+v", "change_result_view", "Change result view"),
+        ("ctrl+b", "last_line", "Move to last line"),
+        ("ctrl+s", "send_button", "Press send button"),
+        ("t", "lines_view", "Toggle view to lines"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -509,21 +514,22 @@ class AvailabilityUI(App):
             self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nIssuing request {request}')
             self.query_one("#status-container").scroll_end()
             try:
-                r = requests.get(request)
+                global req
+                req = requests.get(request)
             except (requests.exceptions.InvalidURL, requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema, requests.exceptions.ConnectionError):
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Please provide a valid availability URL[/red]')
                 self.query_one("#status-container").scroll_end()
                 return None
-            if r.status_code == 204:
+            if req.status_code == 204:
                 self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]No data available[/red]')
                 self.query_one("#status-container").scroll_end()
-            elif r.status_code != 200:
-                self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]{r.text}[/red]')
+            elif req.status_code != 200:
+                self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]{req.text}[/red]')
                 self.query_one("#status-container").scroll_end()
             else:
                 self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[green]Request successfully returned data[/green]')
                 self.query_one("#status-container").scroll_end()
-                self.show_results(r.text)
+                self.show_results(req.text)
 
 
     def show_results(self, csv_results):
@@ -572,10 +578,12 @@ class AvailabilityUI(App):
                     start_trace = datetime.strptime(csv_results[traces_qual[key][0][0]].split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ")
                     end_trace = datetime.strptime(csv_results[traces_qual[key][0][0]].split('|')[7], "%Y-%m-%dT%H:%M:%S.%fZ")
                     # see if trace starts or ends in the middle of span
-                    if span_start < start_trace < span_end or span_start < end_trace < span_end:
-                        char = '╌'
+                    if span_start < start_trace < span_end:
+                        char = '┗'
+                    elif  span_start < end_trace < span_end:
+                        char = '┛'
                     else:
-                        char = '─'
+                        char = '━'
                     if traces_qual[key][1] == 'D':
                         lines[key] += f"[yellow]{char}[/yellow]"
                     elif traces_qual[key][1] == 'R':
@@ -613,19 +621,15 @@ class AvailabilityUI(App):
             self.query(CursoredText)[-1].focus()
 
 
-    def action_button_focus(self) -> None:
-        """An action to move focus to the button which sends request"""
-        if self.query_one("#request-button"):
-            self.query_one("#request-button").focus()
+    def action_lines_view(self) -> None:
+        self.query_one(ContentSwitcher).current = "lines"
+        nslc_to_focus = '_'.join(str(self.query_one("#plain").renderable).splitlines()[-1].split('|')[:4])
+        self.query_one(f"#{nslc_to_focus}").focus()
 
 
-    def action_change_result_view(self) -> None:
-        """An action to change result view between lines and plain text"""
-        if self.query(ContentSwitcher):
-            if self.query_one(ContentSwitcher).current == "lines":
-                self.query_one(ContentSwitcher).current = "plain-container"
-            else:
-                self.query_one(ContentSwitcher).current = "lines"
+    def action_send_button(self) -> None:
+        """An action equivalent to pressing send button"""
+        self.on_button_pressed(Button.Pressed(button=self.query_one("#request-button")))
 
 
 if __name__ == "__main__":
