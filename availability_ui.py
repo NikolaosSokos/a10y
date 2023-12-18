@@ -3,6 +3,8 @@ from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, ScrollableContainer
 from textual.widgets import Static, Label, Select, Input, Checkbox, Button, ContentSwitcher, Header
 from textual_autocomplete import AutoComplete, Dropdown, DropdownItem
+from textual import work
+from textual.worker import get_current_worker
 import requests
 from datetime import datetime, timedelta
 from rich.text import Text
@@ -88,7 +90,7 @@ class CursoredText(Input):
                 self.parent.parent.parent.parent.current = "plain-container"
                 if self.parent.parent.parent.parent.parent.parent.parent.focused in self.parent.parent.query(CursoredText):
                     active_nslc = self.parent.parent.parent.parent.parent.parent.parent.focused.id.split('_')
-                    text = req.text.splitlines()
+                    text = self.parent.parent.parent.parent.parent.parent.parent.parent.req.text.splitlines()
                     new_text = '\n'.join(text[:5])
                     for row in text[5:]:
                         parts = row.split('|')
@@ -110,21 +112,9 @@ class CursoredText(Input):
                     if max(temp1, temp2, temp3) != -1:
                         self.cursor_position = min([n for n in (temp1, temp2, temp3) if n >= 0])
                     else:
-                        self.parent.parent.parent.parent.parent.parent.parent.parent.action_focus_next()
-                        try:
-                            self.parent.parent.parent.parent.parent.parent.parent.parent.focused.action_home()
-                        except AttributeError:
-                            last = self.parent.parent.parent.parent.parent.parent.query(CursoredText)[-1]
-                            last.focus()
-                            last.action_end()
+                        self.parent.parent.parent.parent.parent.parent.parent.parent.next_line()
                 else:
-                    self.parent.parent.parent.parent.parent.parent.parent.parent.action_focus_next()
-                    try:
-                        self.parent.parent.parent.parent.parent.parent.parent.parent.focused.action_home()
-                    except AttributeError:
-                        last = self.parent.parent.parent.parent.parent.parent.query(CursoredText)[-1]
-                        last.focus()
-                        last.action_end()
+                    self.parent.parent.parent.parent.parent.parent.parent.parent.next_line()
                 self.update_info_bar()
             # move to previous trace
             elif event.character == 'p':
@@ -151,17 +141,9 @@ class CursoredText(Input):
                         else:
                             self.cursor_position = temp if self.value[temp] in ['┗', '┛'] else temp + 1
                     else:
-                        self.parent.parent.parent.parent.parent.parent.parent.parent.action_focus_previous()
-                        try:
-                            self.parent.parent.parent.parent.parent.parent.parent.parent.focused.action_end()
-                        except AttributeError:
-                            self.parent.parent.parent.parent.parent.parent.query(CursoredText)[0].focus()
+                        self.parent.parent.parent.parent.parent.parent.parent.parent.previous_line()
                 else:
-                    self.parent.parent.parent.parent.parent.parent.parent.parent.action_focus_previous()
-                    try:
-                        self.parent.parent.parent.parent.parent.parent.parent.parent.focused.action_end()
-                    except AttributeError:
-                        self.parent.parent.parent.parent.parent.parent.query(CursoredText)[0].focus()
+                    self.parent.parent.parent.parent.parent.parent.parent.parent.previous_line()
                 self.update_info_bar()
             event.stop()
             assert event.character is not None
@@ -358,7 +340,10 @@ class AvailabilityUI(App):
         ("ctrl+b", "last_line", "Move to last line"),
         ("ctrl+s", "send_button", "Press send button"),
         ("t", "lines_view", "Toggle view to lines"),
+        ("escape", "cancel_request", "Cancel request"),
     ]
+
+    req = None
 
     def compose(self) -> ComposeResult:
         self.title = "Availability UI"
@@ -493,6 +478,31 @@ class AvailabilityUI(App):
                 autocomplete.items = [DropdownItem(unique) for unique in {c.split('|')[3] for c in r.text.splitlines()[1:]}]
 
 
+    @work(exclusive=True, thread=True)
+    def send_request(self, request):
+        """A function to send requests in a concurrent fashion, so that app remains responsive and requests can be cancelled"""
+        worker = get_current_worker()
+        try:
+            self.req = requests.get(request)
+        except (requests.exceptions.InvalidURL, requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema, requests.exceptions.ConnectionError):
+            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Please provide a valid availability URL[/red]')
+            self.query_one("#status-container").scroll_end()
+            return None
+        if self.req.status_code == 204:
+            self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]No data available[/red]')
+            self.query_one("#status-container").scroll_end()
+        elif self.req.status_code != 200:
+            self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]{self.req.text}[/red]')
+            self.query_one("#status-container").scroll_end()
+        else:
+            if not worker.is_cancelled:
+                self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[green]Request successfully returned data[/green]')
+                self.call_from_thread(self.show_results, self.req.text)
+            else:
+                self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nRequest was cancelled!')
+            self.query_one("#status-container").scroll_end()
+
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """A function to send availability request when Send button is clicked"""
         if event.button == self.query_one("#request-button"):
@@ -513,23 +523,7 @@ class AvailabilityUI(App):
             request = f"{node+'availability/1/query' if node else self.query_one('#baseurl').value}?format=geocsv{'&network='+net if net else ''}{'&station='+sta if sta else ''}{'&location='+loc if loc else ''}{'&channel='+cha if cha else ''}{'&starttime='+start if start else ''}{'&endtime='+end if end else ''}{'&merge='+merge if merge else ''}{'&quality='+quality if quality else ''}{'&mergegaps='+mergegaps if mergegaps else ''}"
             self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nIssuing request {request}')
             self.query_one("#status-container").scroll_end()
-            try:
-                global req
-                req = requests.get(request)
-            except (requests.exceptions.InvalidURL, requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema, requests.exceptions.ConnectionError):
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Please provide a valid availability URL[/red]')
-                self.query_one("#status-container").scroll_end()
-                return None
-            if req.status_code == 204:
-                self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]No data available[/red]')
-                self.query_one("#status-container").scroll_end()
-            elif req.status_code != 200:
-                self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]{req.text}[/red]')
-                self.query_one("#status-container").scroll_end()
-            else:
-                self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[green]Request successfully returned data[/green]')
-                self.query_one("#status-container").scroll_end()
-                self.show_results(req.text)
+            self.send_request(request)
 
 
     def show_results(self, csv_results):
@@ -609,6 +603,11 @@ class AvailabilityUI(App):
             self.query(CursoredText)[0].focus()
 
 
+    def action_cancel_request(self) -> None:
+        """An action for the user to cancel requests (if for example they take too much time)"""
+        self.workers.cancel_all()
+
+
     def action_first_line(self) -> None:
         """An action to move focus to the first line"""
         if self.query(CursoredText):
@@ -622,14 +621,32 @@ class AvailabilityUI(App):
 
 
     def action_lines_view(self) -> None:
-        self.query_one(ContentSwitcher).current = "lines"
-        nslc_to_focus = '_'.join(str(self.query_one("#plain").renderable).splitlines()[-1].split('|')[:4])
-        self.query_one(f"#{nslc_to_focus}").focus()
+        if self.query(ContentSwitcher) and self.query_one(ContentSwitcher).current == "plain-container":
+            self.query_one(ContentSwitcher).current = "lines"
+            nslc_to_focus = '_'.join(str(self.query_one("#plain").renderable).splitlines()[-1].split('|')[:4])
+            self.query_one(f"#{nslc_to_focus}").focus()
 
 
     def action_send_button(self) -> None:
         """An action equivalent to pressing send button"""
         self.on_button_pressed(Button.Pressed(button=self.query_one("#request-button")))
+
+
+    def next_line(self):
+        self.action_focus_next()
+        if self.focused not in self.query(CursoredText):
+            self.query(CursoredText)[-1].focus()
+            # below line does not have effect because focus turns out to happen after below line is executed
+            #self.query(CursoredText)[-1].action_end()
+
+
+    def previous_line(self):
+        self.action_focus_previous()
+        if self.focused not in self.query(CursoredText):
+            self.query(CursoredText)[0].focus()
+        else:
+            # below line does not have effect because focus turns out to happen after below line is executed
+            self.query(CursoredText)[0].action_end()
 
 
 if __name__ == "__main__":
