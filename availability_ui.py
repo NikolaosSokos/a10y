@@ -533,8 +533,14 @@ class AvailabilityUI(App):
         self.query_one('#lines').mount(ScrollableContainer(id="results-container"))
         # cut time frame into desired number of spans to see for how many of them a trace lasts
         num_spans = 130
-        start_frame = datetime.strptime(self.query_one("#start").value, "%Y-%m-%dT%H:%M:%S")
-        end_frame = datetime.strptime(self.query_one("#end").value, "%Y-%m-%dT%H:%M:%S")
+        try:
+            start_frame = datetime.strptime(self.query_one("#start").value, "%Y-%m-%dT%H:%M:%S")
+        except:
+            start_frame = datetime.strptime(self.query_one("#start").value+"T00:00:00", "%Y-%m-%dT%H:%M:%S")
+        try:
+            end_frame = datetime.strptime(self.query_one("#end").value, "%Y-%m-%dT%H:%M:%S")
+        except:
+            end_frame = datetime.strptime(self.query_one("#end").value+"T00:00:00", "%Y-%m-%dT%H:%M:%S")
         span_frame = (end_frame - start_frame) / num_spans
         lines = {} # for lines of each nslc
         infos = {} # for the info-bar of each nslc
