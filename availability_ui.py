@@ -12,6 +12,7 @@ from rich.cells import get_character_cell_size
 import os
 import sys
 import logging
+import argparse
 
 
 # TODOS:
@@ -241,20 +242,7 @@ class Requests(Static):
         yield Container(
             Horizontal(
                 Label("Node:", classes="request-label", id="node-label"),
-                Select([
-                    ("NOA", "https://eida.gein.noa.gr/fdsnws/"),
-                    ("RESIF", "https://ws.resif.fr/fdsnws/"),
-                    ("ODC", "https://orfeus-eu.org/fdsnws/"),
-                    ("GFZ", "https://geofon.gfz-potsdam.de/fdsnws/"),
-                    ("INGV", "https://webservices.ingv.it/fdsnws/"),
-                    ("ETHZ", "https://eida.ethz.ch/fdsnws/"),
-                    ("BGR", "https://eida.bgr.de/fdsnws/"),
-                    ("NIEP", "https://eida-sc3.infp.ro/fdsnws/"),
-                    ("KOERI", "https://eida.koeri.boun.edu.tr/fdsnws/"),
-                    ("LMU", "https://erde.geophysik.uni-muenchen.de/fdsnws/"),
-                    ("UIB-NORSAR", "https://eida.geo.uib.no/fdsnws/"),
-                    ("ICGC", "https://ws.icgc.cat/fdsnws/")
-                    ], prompt="Choose Node", id="nodes")
+                Select(nodes_selection, prompt="Choose Node", value=Select.BLANK if args.node is None else default_node, id="nodes")
                 ),
             Input(placeholder="Enter Node Availability URL", id="baseurl"), # for the case of user entering availability endpoint URL
             Button("Send", variant="primary", id="request-button"),
@@ -355,6 +343,13 @@ class AvailabilityUI(App):
             Results(classes="box", id="results-widget"),
             id="application-container"
         )
+
+
+    def on_mount(self) -> None:
+        """Ensure appropriate actions when a node is set to start the application"""
+        if args.node is not None:
+            self.on_select_changed(Select.Changed(select=self.query_one("#nodes"), value=default_node))
+
 
     def on_select_changed(self, event: Select.Changed) -> None:
         """A function to issue appropriate request and update status when a Node or when a common time frame is selected"""
@@ -656,6 +651,36 @@ class AvailabilityUI(App):
 
 
 if __name__ == "__main__":
+    # parse arguments
+    def parse_arguments():
+        desc = 'Availability UI application'
+        parser = argparse.ArgumentParser(description=desc)
+        parser.add_argument('-n', '--node', default = None,
+                            help='Node to start the UI with (default is no node)')
+        return parser.parse_args()
+
+    args = parse_arguments()
+    nodes_selection = [
+        ("NOA", "https://eida.gein.noa.gr/fdsnws/"),
+        ("RESIF", "https://ws.resif.fr/fdsnws/"),
+        ("ODC", "https://orfeus-eu.org/fdsnws/"),
+        ("GFZ", "https://geofon.gfz-potsdam.de/fdsnws/"),
+        ("INGV", "https://webservices.ingv.it/fdsnws/"),
+        ("ETHZ", "https://eida.ethz.ch/fdsnws/"),
+        ("BGR", "https://eida.bgr.de/fdsnws/"),
+        ("NIEP", "https://eida-sc3.infp.ro/fdsnws/"),
+        ("KOERI", "https://eida.koeri.boun.edu.tr/fdsnws/"),
+        ("LMU", "https://erde.geophysik.uni-muenchen.de/fdsnws/"),
+        ("UIB-NORSAR", "https://eida.geo.uib.no/fdsnws/"),
+        ("ICGC", "https://ws.icgc.cat/fdsnws/")
+    ]
+    if args.node is not None and args.node not in [n[0] for n in nodes_selection]:
+        logging.error(f"Node '{args.node}' not available. Available nodes are: {', '.join([n[0] for n in nodes_selection])}")
+        sys.exit(1)
+    for n in nodes_selection:
+        if args.node == n[0]:
+            default_node = n[1]
+
     # use below defaults or take them from config file if exists
     default_starttime = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S")
     default_endtime = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
