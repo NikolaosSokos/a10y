@@ -88,6 +88,10 @@ Status {
   margin-left: 2;
 }
 
+#error-results {
+  margin-left: 2;
+}
+
 ContentSwitcher {
   margin-left: 2;
 }

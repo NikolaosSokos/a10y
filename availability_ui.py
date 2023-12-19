@@ -323,6 +323,7 @@ class Results(Static):
 
     def compose(self) -> ComposeResult:
         yield Static("[b]Results[/b]")
+        yield Static(id="error-results")
 
 
 class AvailabilityUI(App):
@@ -491,8 +492,10 @@ class AvailabilityUI(App):
             self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]No data available[/red]')
             self.query_one("#status-container").scroll_end()
         elif self.req.status_code != 200:
-            self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]{self.req.text}[/red]')
+            self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]Request failed. See below for more details[/red]')
             self.query_one("#status-container").scroll_end()
+            self.query_one("#error-results").remove_class("hide")
+            self.query_one("#error-results").update(f"[red]{self.req.text}[/red]")
         else:
             if not worker.is_cancelled:
                 self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[green]Request successfully returned data[/green]')
@@ -508,6 +511,7 @@ class AvailabilityUI(App):
             # clear previous results
             if self.query(ContentSwitcher):
                 self.query_one(ContentSwitcher).remove()
+            self.query_one("#error-results").add_class("hide")
             # build request
             node = self.query_one("#nodes").value if self.query_one("#nodes").value != Select.BLANK else None
             net = self.query_one("#network").value
