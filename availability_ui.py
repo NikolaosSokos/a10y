@@ -168,7 +168,8 @@ class CursoredText(Input):
 """[gold3]ctrl+c[/gold3]: close app  [gold3]ctrl+s[/gold3]: send request  [gold3]esc[/gold3]: cancel request  [gold3]up/down/pgUp/pgDown[/gold3]: scroll up/down if in scrollable window
 [gold3]t[/gold3]: toggle results view           [gold3]tab/shif+tab[/gold3]: jump to next/previous channel            [gold3]ctrl+t/ctrl+b[/gold3]: jump to top/bottom channel
 [gold3]right/left[/gold3]: move cursor on line  [gold3]home/end[/gold3]: jump to beginning/end of line                [gold3]n/p[/gold3]: jump to next/previous trace
-[gold3]c[/gold3]: capture NSLC under cursor     [gold3]s/e[/gold3]: capture timestamp under cursor as Start/End Time  [gold3]z[/gold3]: capture time span under cursor as Start and End Time""",
+[gold3]c[/gold3]: capture NSLC under cursor     [gold3]s/e[/gold3]: capture timestamp under cursor as Start/End Time  [gold3]z[/gold3]: capture time span under cursor as Start and End Time
+Quality codes colors: [yellow][b]D[/b][/yellow] [green1][b]R[/b][/green1] [orchid][b]Q[/b][/orchid] [cyan][b]M[/b][/cyan]""",
         )
         event.prevent_default()
 
