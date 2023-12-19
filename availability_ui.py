@@ -164,7 +164,19 @@ class CursoredText(Input):
         if self.parent is not None:
             self.parent.post_message(events.DescendantFocus(self))
         self.update_info_bar()
+        self.parent.parent.parent.parent.parent.parent.parent.parent.query_one("#explanations-keys").update(
+"""[gold3]ctrl+c[/gold3]: close app  [gold3]ctrl+s[/gold3]: send request  [gold3]esc[/gold3]: cancel request  [gold3]up/down/pgUp/pgDown[/gold3]: scroll up/down if in scrollable window
+[gold3]t[/gold3]: toggle results view           [gold3]tab/shif+tab[/gold3]: jump to next/previous channel            [gold3]ctrl+t/ctrl+b[/gold3]: jump to top/bottom channel
+[gold3]right/left[/gold3]: move cursor on line  [gold3]home/end[/gold3]: jump to beginning/end of line                [gold3]n/p[/gold3]: jump to next/previous trace
+[gold3]c[/gold3]: capture NSLC under cursor     [gold3]s/e[/gold3]: capture timestamp under cursor as Start/End Time  [gold3]z[/gold3]: capture time span under cursor as Start and End Time""",
+        )
         event.prevent_default()
+
+    def _on_blur(self, event: events.Blur) -> None:
+        super()._on_blur(event)
+        self.parent.parent.parent.parent.parent.parent.parent.parent.query_one("#explanations-keys").update(
+"""[gold3]ctrl+c[/gold3]: close app  [gold3]tab/shif+tab[/gold3]: cycle through options  [gold3]ctrl+s[/gold3]: send request  [gold3]esc[/gold3]: cancel request
+[gold3]up/down/pgUp/pgDown[/gold3]: scroll up/down if in scrollable window""")
 
     def _on_paste(self, event: events.Paste) -> None:
         event.stop()
@@ -229,12 +241,10 @@ class Explanations(Static):
     """Explanations box with common key functions"""
 
     def compose(self) -> ComposeResult:
-        yield Static("[b]Useful Keys[/b] ([violet]purple[/violet] key bindings can be used if results are shown on the results window)")
+        yield Static("[b]Useful Keys[/b]")
         yield Static(
-"""[gold3]ctrl+b[/gold3]: focus button             [gold3]enter[/gold3]: send request if button is focused   [gold3]tab/shif+tab[/gold3]: focus next/previous item or channel
-[violet]ctrl+v[/violet]: change results view      [violet]ctrl+t/ctrl+l[/violet]: jump to first/last channel  [gold3]up/down/pgUp/pgDown[/gold3]: scroll up/down if in a scrollable item
-[violet]right/left[/violet]: move cursor on line  [violet]home/end[/violet]: jump to beginning/end of line    [violet]S[/violet]: capture timestamp under cursor as Start Time
-[violet]C[/violet]: capture NSLC under cursor     [violet]n/p[/violet]: jump to next/previous trace of line   [violet]E[/violet]: capture timestamp under cursor as End Time  [gold3]ctrl+c[/gold3]: close app""",
+"""[gold3]ctrl+c[/gold3]: close app  [gold3]tab/shif+tab[/gold3]: cycle through options  [gold3]ctrl+s[/gold3]: send request  [gold3]esc[/gold3]: cancel request
+[gold3]up/down/pgUp/pgDown[/gold3]: scroll up/down if in scrollable window""",
             id="explanations-keys")
 
 
