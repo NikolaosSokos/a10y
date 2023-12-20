@@ -13,6 +13,9 @@ import os
 import sys
 import logging
 import argparse
+from tkinter import Tk
+from tkinter.filedialog import askopenfilename
+import tempfile
 
 
 # TODOS:
@@ -258,9 +261,13 @@ class Requests(Static):
             Horizontal(
                 Label("Node:", classes="request-label", id="node-label"),
                 Select(nodes_selection, prompt="Choose Node", value=Select.BLANK if args.node is None else default_node, id="nodes")
-                ),
+            ),
             Input(placeholder="Enter Node Availability URL", id="baseurl"), # for the case of user entering availability endpoint URL
-            Button("Send", variant="primary", id="request-button"),
+            Horizontal(
+                Button("Send", variant="primary", id="request-button"),
+                Button("File", variant="primary", id="file-button"),
+                id="buttons"
+            ),
             id="request-node"
         )
         yield Horizontal(
@@ -490,11 +497,17 @@ class AvailabilityUI(App):
 
 
     @work(exclusive=True, thread=True)
-    def send_request(self, request):
+    def send_request(self, request, post=False):
         """A function to send requests in a concurrent fashion, so that app remains responsive and requests can be cancelled"""
         worker = get_current_worker()
         try:
-            self.req = requests.get(request)
+            if not post:
+                self.req = requests.get(request)
+            else:
+                node = self.query_one("#nodes").value if self.query_one("#nodes").value != Select.BLANK else None
+                url = node + 'availability/1/query' if node else self.query_one('#baseurl').value
+                with open(request, 'rb') as file:
+                    self.req = requests.post(url, files={'file': file})
         except (requests.exceptions.InvalidURL, requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema, requests.exceptions.ConnectionError):
             self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Please provide a valid availability URL[/red]')
             self.query_one("#status-container").scroll_end()
@@ -518,26 +531,47 @@ class AvailabilityUI(App):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """A function to send availability request when Send button is clicked"""
+        # clear previous results
+        if self.query(ContentSwitcher):
+            self.query_one(ContentSwitcher).remove()
+        self.query_one("#error-results").add_class("hide")
+        # build request
+        node = self.query_one("#nodes").value if self.query_one("#nodes").value != Select.BLANK else None
+        net = self.query_one("#network").value
+        sta = self.query_one("#station").value
+        loc = self.query_one("#location").value
+        cha = self.query_one("#channel").value
+        start = self.query_one("#start").value
+        end = self.query_one("#end").value
+        merge = ",".join([option for option, bool in zip(['samplerate', 'quality', 'overlap'], [self.query_one("#samplerate").value, self.query_one("#qual").value, self.query_one("#overlap").value]) if bool])
+        mergegaps = str(self.query_one("#mergegaps").value)
+        quality = ",".join([q for q, bool in zip(['D', 'R', 'Q', 'M'], [self.query_one("#qd").value, self.query_one("#qr").value, self.query_one("#qq").value, self.query_one("#qm").value]) if bool])
+        # request from send button
         if event.button == self.query_one("#request-button"):
-            # clear previous results
-            if self.query(ContentSwitcher):
-                self.query_one(ContentSwitcher).remove()
-            self.query_one("#error-results").add_class("hide")
-            # build request
-            node = self.query_one("#nodes").value if self.query_one("#nodes").value != Select.BLANK else None
-            net = self.query_one("#network").value
-            sta = self.query_one("#station").value
-            loc = self.query_one("#location").value
-            cha = self.query_one("#channel").value
-            start = self.query_one("#start").value
-            end = self.query_one("#end").value
-            merge = ",".join([option for option, bool in zip(['samplerate', 'quality', 'overlap'], [self.query_one("#samplerate").value, self.query_one("#qual").value, self.query_one("#overlap").value]) if bool])
-            mergegaps = str(self.query_one("#mergegaps").value)
-            quality = ",".join([q for q, bool in zip(['D', 'R', 'Q', 'M'], [self.query_one("#qd").value, self.query_one("#qr").value, self.query_one("#qq").value, self.query_one("#qm").value]) if bool])
             request = f"{node+'availability/1/query' if node else self.query_one('#baseurl').value}?format=geocsv{'&network='+net if net else ''}{'&station='+sta if sta else ''}{'&location='+loc if loc else ''}{'&channel='+cha if cha else ''}{'&starttime='+start if start else ''}{'&endtime='+end if end else ''}{'&merge='+merge if merge else ''}{'&quality='+quality if quality else ''}{'&mergegaps='+mergegaps if mergegaps else ''}"
             self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nIssuing request {request}')
             self.query_one("#status-container").scroll_end()
             self.send_request(request)
+        # request from file button
+        elif event.button == self.query_one("#file-button"):
+            Tk().withdraw()
+            filename = askopenfilename()
+            if os.path.isfile(filename if filename else ''):
+                self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nReading NSLC from file {filename}')
+                with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp:
+                    temp.write("format=geocsv\n")
+                    with open(filename, 'r') as f:
+                        temp.write(f"merge={merge}\n" if merge else "")
+                        temp.write(f"mergegaps={mergegaps}\n" if mergegaps else "")
+                        temp.write(f"quality={quality}\n" if quality else "")
+                        lines = f.readlines()
+                        for l in lines:
+                            if '=' not in l:
+                                nslc = l.split('\n')[0].split(' ')
+                                temp.write(f"{nslc[0]} {nslc[1]} {nslc[2]} {nslc[3]} {start} {end}\n")
+                    temp.seek(0)
+                    print(temp.read())
+                    self.send_request(request=temp.name, post=True)
 
 
     def show_results(self, csv_results):

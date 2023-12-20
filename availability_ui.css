@@ -44,8 +44,12 @@ Requests {
   display: none;
 }
 
+#buttons {
+  height: auto;
+}
+
 #request-button {
-  margin-left: 2;
+  margin: 0 6 0 2;
 }
 
 .short-input {
