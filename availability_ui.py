@@ -172,7 +172,7 @@ class CursoredText(Input):
 [gold3]t[/gold3]: toggle results view           [gold3]tab/shif+tab[/gold3]: jump to next/previous channel            [gold3]ctrl+t/ctrl+b[/gold3]: jump to top/bottom channel
 [gold3]right/left[/gold3]: move cursor on line  [gold3]home/end[/gold3]: jump to beginning/end of line                [gold3]n/p[/gold3]: jump to next/previous trace
 [gold3]c[/gold3]: capture NSLC under cursor     [gold3]s/e[/gold3]: capture timestamp under cursor as Start/End Time  [gold3]z[/gold3]: capture time span under cursor as Start and End Time
-Quality codes colors: [yellow][b]D[/b][/yellow] [green1][b]R[/b][/green1] [orchid][b]Q[/b][/orchid] [cyan][b]M[/b][/cyan]""",
+Quality codes colors: [orange1][b]D[/b][/orange1] [green1][b]R[/b][/green1] [orchid][b]Q[/b][/orchid] [turquoise4][b]M[/b][/turquoise4]""",
         )
         event.prevent_default()
 
@@ -633,13 +633,13 @@ class AvailabilityUI(App):
                     else:
                         char = '━'
                     if traces_qual[key][1] == 'D':
-                        lines[key] += f"[yellow]{char}[/yellow]"
+                        lines[key] += f"[orange1]{char}[/orange1]"
                     elif traces_qual[key][1] == 'R':
                         lines[key] += f"[green1]{char}[/green1]"
                     elif traces_qual[key][1] == 'Q':
                         lines[key] += f"[orchid]{char}[/orchid]"
                     elif traces_qual[key][1] == 'M':
-                        lines[key] += f"[cyan]{char}[/cyan]"
+                        lines[key] += f"[turquoise4]{char}[/turquoise4]"
                     infos[key].append((traces_qual[key][1], timestamp, start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), span_start.strftime("%Y-%m-%dT%H:%M:%S"), span_end.strftime("%Y-%m-%dT%H:%M:%S")))
                 else:
                     lines[key] += '╌' if len(traces_qual[key][0]) == 2 else '┄'
