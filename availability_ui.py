@@ -681,7 +681,7 @@ class AvailabilityUI(App):
         longest_label = max([len(k) for k in lines.keys()])
         for k in lines:
             infos[k].append(("", "", "", "", "", "")) # because cursor can go one character after the end of the input
-            self.query_one('#results-container').mount(Horizontal(Label(f"{k}{' '*(longest_label-len(k))}"), CursoredText(value=lines[k], info=infos[k], id=k), classes="result-item"))
+            self.query_one('#results-container').mount(Horizontal(Label(f"{k}{' '*(longest_label-len(k))}"), CursoredText(value=lines[k], info=infos[k], id=f"_{k}"), classes="result-item"))
         if self.query(CursoredText):
             self.query(CursoredText)[0].focus()
 
