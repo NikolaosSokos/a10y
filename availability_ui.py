@@ -16,11 +16,6 @@ import argparse
 import tempfile
 
 
-# TODOS:
-#  - see the issues
-#  - README, package with sth
-
-
 class CursoredText(Input):
     """Widget that shows a Static text with a cursor that can be moved within text content"""
 
@@ -176,9 +171,12 @@ Quality codes colors: [orange1][b]D[/b][/orange1] [green1][b]R[/b][/green1] [orc
 
     def _on_blur(self, event: events.Blur) -> None:
         super()._on_blur(event)
-        self.parent.parent.parent.parent.parent.parent.parent.parent.query_one("#explanations-keys").update(
+        try:
+            self.parent.parent.parent.parent.parent.parent.parent.parent.query_one("#explanations-keys").update(
 """[gold3]ctrl+c[/gold3]: close app  [gold3]tab/shif+tab[/gold3]: cycle through options  [gold3]ctrl+s[/gold3]: send request  [gold3]esc[/gold3]: cancel request
 [gold3]up/down/pgUp/pgDown[/gold3]: scroll up/down if in scrollable window""")
+        except:
+            pass
 
     def _on_paste(self, event: events.Paste) -> None:
         event.stop()
@@ -511,6 +509,9 @@ class AvailabilityUI(App):
             self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Please provide a valid availability URL[/red]')
             self.query_one("#status-container").scroll_end()
             return None
+        finally:
+            if os.path.isfile(request):
+                os.remove(request) # remove temp file from system
         if self.req.status_code == 204:
             self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]No data available[/red]')
             self.query_one("#status-container").scroll_end()
@@ -534,6 +535,9 @@ class AvailabilityUI(App):
         if self.query(ContentSwitcher):
             self.query_one(ContentSwitcher).remove()
         self.query_one("#error-results").add_class("hide")
+        self.query_one("#explanations-keys").update(
+"""[gold3]ctrl+c[/gold3]: close app  [gold3]tab/shif+tab[/gold3]: cycle through options  [gold3]ctrl+s[/gold3]: send request  [gold3]esc[/gold3]: cancel request
+[gold3]up/down/pgUp/pgDown[/gold3]: scroll up/down if in scrollable window""")
         # build request
         node = self.query_one("#nodes").value if self.query_one("#nodes").value != Select.BLANK else None
         net = self.query_one("#network").value
