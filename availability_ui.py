@@ -560,10 +560,10 @@ class AvailabilityUI(App):
                 self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nReading NSLC from file {filename}')
                 with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp:
                     temp.write("format=geocsv\n")
+                    temp.write(f"merge={merge}\n" if merge else "")
+                    temp.write(f"mergegaps={mergegaps}\n" if mergegaps else "")
+                    temp.write(f"quality={quality}\n" if quality else "")
                     with open(filename, 'r') as f:
-                        temp.write(f"merge={merge}\n" if merge else "")
-                        temp.write(f"mergegaps={mergegaps}\n" if mergegaps else "")
-                        temp.write(f"quality={quality}\n" if quality else "")
                         lines = f.readlines()
                         for l in lines:
                             if '=' not in l:
