@@ -14,6 +14,28 @@ import sys
 import logging
 import argparse
 import tempfile
+from textual.suggester import Suggester
+
+
+class FileSuggester(Suggester):
+    """A suggester for the POST file input"""
+
+    def __init__(self) -> None:
+        super().__init__(use_cache=True, case_sensitive=True)
+
+    async def get_suggestion(self, value: str):
+        """Suggestions are the matching files and folders of the directory the user has typed"""
+        if value.startswith('/'):
+            to_list = os.path.split(value)[0]
+        else:
+            to_list = os.path.join('./', os.path.split(value)[0])
+        try:
+            for suggestion in os.listdir(to_list):
+                if suggestion.startswith(os.path.split(value)[1]):
+                    return value + suggestion[len(os.path.split(value)[1]):]
+        except:
+            return None
+        return None
 
 
 class CursoredText(Input):
@@ -259,7 +281,7 @@ class Requests(Static):
                 Select(nodes_selection, prompt="Choose Node", value=Select.BLANK if args.node is None else default_node, id="nodes")
             ),
             Input(placeholder="Enter Node Availability URL", id="baseurl"), # for the case of user entering availability endpoint URL
-            Input(placeholder="Enter POST file path", value=default_file, id="post-file"),
+            Input(placeholder="Enter POST file path", value=default_file, suggester=FileSuggester(), id="post-file"),
             Horizontal(
                 Button("Send", variant="primary", id="request-button"),
                 Button("File", variant="primary", id="file-button"),
