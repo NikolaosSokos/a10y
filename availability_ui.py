@@ -569,8 +569,7 @@ class AvailabilityUI(App):
                             if '=' not in l:
                                 nslc = l.split('\n')[0].split(' ')
                                 temp.write(f"{nslc[0]} {nslc[1]} {nslc[2]} {nslc[3]} {start} {end}\n")
-                    temp.seek(0)
-                    print(temp.read())
+                    self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nMaking a POST request with selected file')
                     self.send_request(request=temp.name, post=True)
 
 
