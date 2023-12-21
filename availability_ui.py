@@ -112,7 +112,7 @@ class CursoredText(Input):
                 # self.parent.parent.parent.parent = ContentSwitcher
                 self.parent.parent.parent.parent.current = "plain-container"
                 if self.parent.parent.parent.parent.parent.parent.parent.focused in self.parent.parent.query(CursoredText):
-                    active_nslc = self.parent.parent.parent.parent.parent.parent.parent.focused.id.split('_')
+                    active_nslc = self.parent.parent.parent.parent.parent.parent.parent.focused.id.split('_')[1:]
                     text = self.parent.parent.parent.parent.parent.parent.parent.parent.req.text.splitlines()
                     new_text = '\n'.join(text[:5])
                     for row in text[5:]:
@@ -564,6 +564,18 @@ class AvailabilityUI(App):
 [gold3]up/down/pgUp/pgDown[/gold3]: scroll up/down if in scrollable window""")
         # build request
         node = self.query_one("#nodes").value if self.query_one("#nodes").value != Select.BLANK else None
+        # abort if not node selected and invalid availability URL endpoint typed
+        if node is None:
+            try:
+                r = requests.get(self.query_one('#baseurl').value)
+            except (requests.exceptions.InvalidURL, requests.exceptions.MissingSchema, requests.exceptions.ConnectionError):
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Invalid availability URL[/red]')
+                self.query_one("#status-container").scroll_end()
+                return None
+            if not (r.status_code == 400 and 'availability' in r.text):
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Invalid availability URL[/red]')
+                self.query_one("#status-container").scroll_end()
+                return None
         net = self.query_one("#network").value
         sta = self.query_one("#station").value
         loc = self.query_one("#location").value
@@ -707,7 +719,7 @@ class AvailabilityUI(App):
         if self.query(ContentSwitcher) and self.query_one(ContentSwitcher).current == "plain-container":
             self.query_one(ContentSwitcher).current = "lines"
             nslc_to_focus = '_'.join(str(self.query_one("#plain").renderable).splitlines()[-1].split('|')[:4])
-            self.query_one(f"#{nslc_to_focus}").focus()
+            self.query_one(f"#_{nslc_to_focus}").focus()
 
 
     def action_send_button(self) -> None:
