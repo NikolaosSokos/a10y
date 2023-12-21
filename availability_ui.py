@@ -564,8 +564,7 @@ class AvailabilityUI(App):
                     temp.write(f"mergegaps={mergegaps}\n" if mergegaps else "")
                     temp.write(f"quality={quality}\n" if quality else "")
                     with open(filename, 'r') as f:
-                        lines = f.readlines()
-                        for l in lines:
+                        for l in f.readlines():
                             if '=' not in l:
                                 nslc = l.split('\n')[0].split(' ')
                                 temp.write(f"{nslc[0]} {nslc[1]} {nslc[2]} {nslc[3]} {start} {end}\n")
