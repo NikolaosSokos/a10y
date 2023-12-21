@@ -409,8 +409,10 @@ class AvailabilityUI(App):
                 return None
             if event.value == 1:
                 start.value = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%S")
+                mergegaps.value = "0.0"
             elif event.value == 2:
                 start.value = (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%S")
+                mergegaps.value = "0.0"
             elif event.value == 3:
                 start.value = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S")
                 mergegaps.value = "1.0"
