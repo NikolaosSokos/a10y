@@ -13,8 +13,6 @@ import os
 import sys
 import logging
 import argparse
-from tkinter import Tk
-from tkinter.filedialog import askopenfilename
 import tempfile
 
 
@@ -263,6 +261,7 @@ class Requests(Static):
                 Select(nodes_selection, prompt="Choose Node", value=Select.BLANK if args.node is None else default_node, id="nodes")
             ),
             Input(placeholder="Enter Node Availability URL", id="baseurl"), # for the case of user entering availability endpoint URL
+            Input(placeholder="Enter POST file path", value=default_file, id="post-file"),
             Horizontal(
                 Button("Send", variant="primary", id="request-button"),
                 Button("File", variant="primary", id="file-button"),
@@ -341,7 +340,7 @@ class Results(Static):
 
     def compose(self) -> ComposeResult:
         yield Static("[b]Results[/b]")
-        yield Static(id="error-results")
+        yield Static(id="error-results", classes="hide")
 
 
 class AvailabilityUI(App):
@@ -554,22 +553,26 @@ class AvailabilityUI(App):
             self.send_request(request)
         # request from file button
         elif event.button == self.query_one("#file-button"):
-            Tk().withdraw()
-            filename = askopenfilename()
-            if os.path.isfile(filename if filename else ''):
+            filename = self.query_one("#post-file").value
+            if os.path.isfile(filename):
                 self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nReading NSLC from file {filename}')
+                self.query_one("#status-container").scroll_end()
                 with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp:
+                    temp.write(f"quality={quality}\n" if quality else "")
+                    temp.write(f"mergegaps={mergegaps}\n" if mergegaps else "")
                     temp.write("format=geocsv\n")
                     temp.write(f"merge={merge}\n" if merge else "")
-                    temp.write(f"mergegaps={mergegaps}\n" if mergegaps else "")
-                    temp.write(f"quality={quality}\n" if quality else "")
                     with open(filename, 'r') as f:
                         for l in f.readlines():
                             if '=' not in l:
                                 nslc = l.split('\n')[0].split(' ')
                                 temp.write(f"{nslc[0]} {nslc[1]} {nslc[2]} {nslc[3]} {start} {end}\n")
                     self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nMaking a POST request with selected file')
+                    self.query_one("#status-container").scroll_end()
                     self.send_request(request=temp.name, post=True)
+            else:
+                self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]Path "{filename}" does not point to a valid file for POST request[/red]')
+                self.query_one("#status-container").scroll_end()
 
 
     def show_results(self, csv_results):
@@ -708,6 +711,8 @@ if __name__ == "__main__":
         parser = argparse.ArgumentParser(description=desc)
         parser.add_argument('-n', '--node', default = None,
                             help='Node to start the UI with (default is no node)')
+        parser.add_argument('-p', '--post', default = None,
+                            help='Default file path for POST requests')
         return parser.parse_args()
 
     args = parse_arguments()
@@ -733,6 +738,7 @@ if __name__ == "__main__":
             default_node = n[1]
 
     # use below defaults or take them from config file if exists
+    default_file = args.post
     default_starttime = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S")
     default_endtime = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     default_quality_D = True

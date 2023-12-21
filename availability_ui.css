@@ -37,7 +37,12 @@ Requests {
 
 #baseurl {
   width: 40;
-  margin: 0 0 2 1;
+  margin-left: 1;
+}
+
+#post-file {
+  width: 40;
+  margin-left: 1;
 }
 
 .hide {
