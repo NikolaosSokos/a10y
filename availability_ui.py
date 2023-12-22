@@ -92,7 +92,7 @@ class CursoredText(Input):
         if event.is_printable:
             # capture nslc
             if event.character == 'c':
-                nslc = self.id.split('_')
+                nslc = self.id.split('_')[1:]
                 self.parent.parent.parent.parent.parent.parent.query_one("#network").value = str(nslc[0])
                 self.parent.parent.parent.parent.parent.parent.query_one("#station").value = str(nslc[1])
                 self.parent.parent.parent.parent.parent.parent.query_one("#location").value = str(nslc[2])
