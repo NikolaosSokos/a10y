@@ -1,7 +1,8 @@
 from textual import events
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, ScrollableContainer
-from textual.widgets import Header, Static, Label, Select, Input, Checkbox, Button, ContentSwitcher, Collapsible, LoadingIndicator
+from textual.widgets import Header, Footer, Static, Label, Select, Input, Checkbox, Button, ContentSwitcher, Collapsible, LoadingIndicator
+from textual.binding import Binding
 from textual_autocomplete import AutoComplete, Dropdown, DropdownItem
 from textual import work
 from textual.worker import get_current_worker
@@ -120,6 +121,9 @@ class CursoredText(Input):
                         if all([p == an for (p, an) in zip(parts, active_nslc)]):
                             new_text += '\n' + row
                     self.parent.parent.parent.parent.query_one("#plain").update(new_text)
+            # toggle help
+            elif event.character == '?':
+                self.parent.parent.parent.parent.parent.parent.parent.parent.action_toggle_help()
             # move to next trace
             elif event.character == 'n':
                 temp1 = self.value.find(' ', self.cursor_position)
@@ -366,11 +370,15 @@ class Results(Static):
 class AvailabilityUI(App):
     CSS_PATH = "availability_ui.css"
     BINDINGS = [
-        ("ctrl+t", "first_line", "Move to first line"),
-        ("ctrl+b", "last_line", "Move to last line"),
-        ("ctrl+s", "send_button", "Press send button"),
-        ("t", "lines_view", "Toggle view to lines"),
-        ("escape", "cancel_request", "Cancel request"),
+        Binding("ctlrl+c", "quit", "Quit"),
+        Binding("tab/shift+tab", "navigate", "Navigate"),
+        Binding("ctrl+s", "send_button", "Send Request"),
+        Binding("?", "toggle_help", "Help"),
+        Binding("Submit Issues", "", "https://github.com/EIDA/a10y/issues"),
+        Binding("ctrl+t", "first_line", "Move to first line", show=False),
+        Binding("ctrl+b", "last_line", "Move to last line", show=False),
+        Binding("t", "lines_view", "Toggle view to lines", show=False),
+        Binding("escape", "cancel_request", "Cancel request", show=False),
     ]
 
     req = None
@@ -379,12 +387,13 @@ class AvailabilityUI(App):
         self.title = "Availability UI"
         yield Header()
         yield ScrollableContainer(
-            Explanations(classes="box"),
+            Explanations(classes="box hide"),
             Requests(classes="box"),
             Collapsible(Status(), title="Status", classes="box", id="status-collapse"),
             Results(classes="box", id="results-widget"),
             id="application-container"
         )
+        yield Footer()
 
 
     def on_mount(self) -> None:
@@ -571,10 +580,14 @@ class AvailabilityUI(App):
             except (requests.exceptions.InvalidURL, requests.exceptions.MissingSchema, requests.exceptions.ConnectionError):
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Invalid availability URL[/red]')
                 self.query_one("#status-container").scroll_end()
+                # hide loading indicator
+                self.query_one("#loading").add_class("hide")
                 return None
             if not (r.status_code == 400 and 'availability' in r.text):
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Invalid availability URL[/red]')
                 self.query_one("#status-container").scroll_end()
+                # hide loading indicator
+                self.query_one("#loading").add_class("hide")
                 return None
         net = self.query_one("#network").value
         sta = self.query_one("#station").value
@@ -613,6 +626,8 @@ class AvailabilityUI(App):
             else:
                 self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]Path "{filename}" does not point to a valid file for POST request[/red]')
                 self.query_one("#status-container").scroll_end()
+                # hide loading indicator
+                self.query_one("#loading").add_class("hide")
 
 
     def show_results(self, csv_results):
@@ -698,6 +713,14 @@ class AvailabilityUI(App):
             self.query(CursoredText)[0].focus()
 
 
+    def action_toggle_help(self) -> None:
+        """An action for the user to show or hide useful keys box"""
+        if "hide" in self.query_one(Explanations).classes:
+            self.query_one(Explanations).remove_class("hide")
+        else:
+            self.query_one(Explanations).add_class("hide")
+
+
     def action_cancel_request(self) -> None:
         """An action for the user to cancel requests (if for example they take too much time)"""
         self.workers.cancel_all()
@@ -713,6 +736,7 @@ class AvailabilityUI(App):
         """An action to move focus to the last line"""
         if self.query(CursoredText):
             self.query(CursoredText)[-1].focus()
+            self.query_one("#application-container").scroll_end()
 
 
     def action_lines_view(self) -> None:
