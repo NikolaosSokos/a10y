@@ -1,7 +1,7 @@
 from textual import events
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, ScrollableContainer
-from textual.widgets import Header, Static, Label, Select, Input, Checkbox, Button, ContentSwitcher, Collapsible
+from textual.widgets import Header, Static, Label, Select, Input, Checkbox, Button, ContentSwitcher, Collapsible, LoadingIndicator
 from textual_autocomplete import AutoComplete, Dropdown, DropdownItem
 from textual import work
 from textual.worker import get_current_worker
@@ -80,7 +80,7 @@ class CursoredText(Input):
         """Update info bar when cursor moves"""
         if self.info[self.cursor_position][1]:
             if self.value[self.cursor_position] == ' ':
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gap          Timestamp: {self.info[self.cursor_position][1]}     Gap start: {self.info[self.cursor_position][2]}     Gap end: {self.info[self.cursor_position][3]} ")
+                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gap          Timestamp: {self.info[self.cursor_position][1]} ")
             elif self.info[self.cursor_position][0].isdigit():
                 self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}      Timestamp: {self.info[self.cursor_position][1]}    Gaps start: {self.info[self.cursor_position][2]}    Gaps end: {self.info[self.cursor_position][3]} ")
             else:
@@ -359,6 +359,7 @@ class Results(Static):
 
     def compose(self) -> ComposeResult:
         yield Static("[b]Results[/b]")
+        yield LoadingIndicator(classes="hide", id="loading")
         yield Static(id="error-results", classes="hide")
 
 
@@ -529,6 +530,7 @@ class AvailabilityUI(App):
                 with open(request, 'rb') as file:
                     self.req = requests.post(url, files={'file': file})
         except (requests.exceptions.InvalidURL, requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema, requests.exceptions.ConnectionError):
+            self.query_one("#loading").add_class("hide") # hide loading indicator
             self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Please provide a valid availability URL[/red]')
             self.query_one("#status-container").scroll_end()
             return None
@@ -537,10 +539,8 @@ class AvailabilityUI(App):
                 os.remove(request) # remove temp file from system
         if self.req.status_code == 204:
             self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]No data available[/red]')
-            self.query_one("#status-container").scroll_end()
         elif self.req.status_code != 200:
             self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]Request failed. See below for more details[/red]')
-            self.query_one("#status-container").scroll_end()
             self.query_one("#error-results").remove_class("hide")
             self.query_one("#error-results").update(f"[red]{self.req.text}[/red]")
         else:
@@ -549,7 +549,9 @@ class AvailabilityUI(App):
                 self.call_from_thread(self.show_results, self.req.text)
             else:
                 self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nRequest was cancelled!')
-            self.query_one("#status-container").scroll_end()
+        self.query_one("#status-container").scroll_end()
+        # hide loading indicator
+        self.query_one("#loading").add_class("hide")
 
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -558,9 +560,8 @@ class AvailabilityUI(App):
         if self.query(ContentSwitcher):
             self.query_one(ContentSwitcher).remove()
         self.query_one("#error-results").add_class("hide")
-        self.query_one("#explanations-keys").update(
-"""[gold3]ctrl+c[/gold3]: close app  [gold3]tab/shif+tab[/gold3]: cycle through options  [gold3]ctrl+s[/gold3]: send request  [gold3]esc[/gold3]: cancel request
-[gold3]up/down/pgUp/pgDown[/gold3]: scroll up/down if in scrollable window""")
+        # show loading indicator in results
+        self.query_one("#loading").remove_class("hide")
         # build request
         node = self.query_one("#nodes").value if self.query_one("#nodes").value != Select.BLANK else None
         # abort if not node selected and invalid availability URL endpoint typed
@@ -661,11 +662,7 @@ class AvailabilityUI(App):
                 timestamp = (start_frame+(span+0.5)*span_frame).strftime("%Y-%m-%dT%H:%M:%S") # middle of span
                 if len(traces_qual[key][0]) == 0:
                     lines[key] += ' '
-                    # gap starts after the latest trace end for the traces before current span (or at start of time window if there are no traces before)
-                    gap_start = max([datetime.strptime(t.split('|')[7], "%Y-%m-%dT%H:%M:%S.%fZ") for t in csv_results if datetime.strptime(t.split('|')[7], "%Y-%m-%dT%H:%M:%S.%fZ") <= span_start]+[start_frame])
-                    # gap ends before the earliest trace start for the traces after current span (or at the end of time window if there are no traces after)
-                    gap_end = min([datetime.strptime(t.split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ") for t in csv_results if datetime.strptime(t.split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ") >= span_end]+[end_frame])
-                    infos[key].append(("", timestamp, gap_start.strftime("%Y-%m-%dT%H:%M:%S"), gap_end.strftime("%Y-%m-%dT%H:%M:%S"), span_start.strftime("%Y-%m-%dT%H:%M:%S"), span_end.strftime("%Y-%m-%dT%H:%M:%S")))
+                    infos[key].append(("", timestamp, "", "", span_start.strftime("%Y-%m-%dT%H:%M:%S"), span_end.strftime("%Y-%m-%dT%H:%M:%S")))
                 elif len(traces_qual[key][0]) == 1:
                     start_trace = datetime.strptime(csv_results[traces_qual[key][0][0]].split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ")
                     end_trace = datetime.strptime(csv_results[traces_qual[key][0][0]].split('|')[7], "%Y-%m-%dT%H:%M:%S.%fZ")
