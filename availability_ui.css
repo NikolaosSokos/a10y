@@ -89,12 +89,12 @@ AutoComplete {
   margin-right: 3;
 }
 
-Status {
-  max-height: 6;
+#status-container {
+  max-height: 5;
 }
 
-#status-container {
-  margin-left: 2;
+#status-collapse {
+  max-height: 10;
 }
 
 #error-results {

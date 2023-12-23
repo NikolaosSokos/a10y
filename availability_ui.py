@@ -1,7 +1,7 @@
 from textual import events
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, ScrollableContainer
-from textual.widgets import Static, Label, Select, Input, Checkbox, Button, ContentSwitcher, Header
+from textual.widgets import Header, Static, Label, Select, Input, Checkbox, Button, ContentSwitcher, Collapsible
 from textual_autocomplete import AutoComplete, Dropdown, DropdownItem
 from textual import work
 from textual.worker import get_current_worker
@@ -351,7 +351,6 @@ class Status(Static):
     """Status line to show user what request is currently issued"""
 
     def compose(self) -> ComposeResult:
-        yield Static("[b]Status[/b]")
         yield ScrollableContainer(Static(f'Welcome to Availability UI application version 1.0! 🙂\nCurrent session started at {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', id="status-line"), id="status-container")
 
 
@@ -381,7 +380,7 @@ class AvailabilityUI(App):
         yield ScrollableContainer(
             Explanations(classes="box"),
             Requests(classes="box"),
-            Status(classes="box"),
+            Collapsible(Status(), title="Status", classes="box", id="status-collapse"),
             Results(classes="box", id="results-widget"),
             id="application-container"
         )
