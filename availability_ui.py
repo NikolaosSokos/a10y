@@ -80,7 +80,7 @@ class CursoredText(Input):
         """Update info bar when cursor moves"""
         if self.info[self.cursor_position][1]:
             if self.value[self.cursor_position] == ' ':
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gap          Timestamp: {self.info[self.cursor_position][1]} ")
+                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gap          Timestamp: {self.info[self.cursor_position][1]}     Gap start: {self.info[self.cursor_position][2]}     Gap end: {self.info[self.cursor_position][3]} ")
             elif self.info[self.cursor_position][0].isdigit():
                 self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}      Timestamp: {self.info[self.cursor_position][1]}    Gaps start: {self.info[self.cursor_position][2]}    Gaps end: {self.info[self.cursor_position][3]} ")
             else:
@@ -662,7 +662,11 @@ class AvailabilityUI(App):
                 timestamp = (start_frame+(span+0.5)*span_frame).strftime("%Y-%m-%dT%H:%M:%S") # middle of span
                 if len(traces_qual[key][0]) == 0:
                     lines[key] += ' '
-                    infos[key].append(("", timestamp, "", "", span_start.strftime("%Y-%m-%dT%H:%M:%S"), span_end.strftime("%Y-%m-%dT%H:%M:%S")))
+                    # gap starts after the latest trace end for the traces before current span (or at start of time window if there are no traces before)
+                    gap_start = max([datetime.strptime(t.split('|')[7], "%Y-%m-%dT%H:%M:%S.%fZ") for t in csv_results if datetime.strptime(t.split('|')[7], "%Y-%m-%dT%H:%M:%S.%fZ") <= span_start]+[start_frame])
+                    # gap ends before the earliest trace start for the traces after current span (or at the end of time window if there are no traces after)
+                    gap_end = min([datetime.strptime(t.split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ") for t in csv_results if datetime.strptime(t.split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ") >= span_end]+[end_frame])
+                    infos[key].append(("", timestamp, gap_start.strftime("%Y-%m-%dT%H:%M:%S"), gap_end.strftime("%Y-%m-%dT%H:%M:%S"), span_start.strftime("%Y-%m-%dT%H:%M:%S"), span_end.strftime("%Y-%m-%dT%H:%M:%S")))
                 elif len(traces_qual[key][0]) == 1:
                     start_trace = datetime.strptime(csv_results[traces_qual[key][0][0]].split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ")
                     end_trace = datetime.strptime(csv_results[traces_qual[key][0][0]].split('|')[7], "%Y-%m-%dT%H:%M:%S.%fZ")
