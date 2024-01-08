@@ -6,7 +6,7 @@ name: Python application
 
 on:
   push:
-    branches: [ "main", "pyinstaller" ]
+    branches: [ "main", "dev-js" ]
   pull_request:
     branches: [ "main" ]
 
