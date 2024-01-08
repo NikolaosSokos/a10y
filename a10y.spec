@@ -2,10 +2,10 @@
 
 
 a = Analysis(
-    ['availability_ui.py'],
+    ['a10y.py'],
     pathex=[],
     binaries=[],
-    datas=[('availability_ui.css', '.')],
+    datas=[('a10y.css', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
