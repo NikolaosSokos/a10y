@@ -82,7 +82,7 @@ class CursoredText(Input):
         """Update info bar when cursor moves"""
         if self.info[self.cursor_position][1]:
             if self.value[self.cursor_position] == ' ':
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gap          Timestamp: {self.info[self.cursor_position][1]} ")
+                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gap          Timestamp: {self.info[self.cursor_position][1]}     Gap start: {self.info[self.cursor_position][2]}     Gap end: {self.info[self.cursor_position][3]} ")
             elif self.info[self.cursor_position][0].isdigit():
                 self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}      Timestamp: {self.info[self.cursor_position][1]}    Gaps start: {self.info[self.cursor_position][2]}    Gaps end: {self.info[self.cursor_position][3]} ")
             else:
@@ -653,38 +653,58 @@ class AvailabilityUI(App):
         for row in csv_results:
             parts = row.split('|')
             key = f"{parts[0]}_{parts[1]}_{parts[2]}_{parts[3]}"
+            # initialization
             if key not in lines:
                 lines[key] = [' ' for i in range(num_spans)]
-                infos[key] = [[] for i in range(num_spans)]
+                infos[key] = [["", "", "", "", "", ""] for i in range(num_spans)]
+                for i in range(num_spans):
+                    infos[key][i][1] = (start_frame+(i+0.5)*span_frame).strftime("%Y-%m-%dT%H:%M:%S")  # timestamp in the middle of each span
+                    infos[key][i][4] = start_frame + i * span_frame
+                    infos[key][i][5] = end_frame if i == num_spans - 1 else start_frame + (i + 1) * span_frame
             start_trace = datetime.strptime(parts[6], "%Y-%m-%dT%H:%M:%S.%fZ")
             end_trace = datetime.strptime(parts[7], "%Y-%m-%dT%H:%M:%S.%fZ")
-            for i in range(math.floor((start_trace-start_frame) / span_frame), math.ceil((end_trace-start_frame) / span_frame)):
+            first_span = math.floor((start_trace-start_frame) / span_frame)
+            last_span = math.ceil((end_trace-start_frame) / span_frame)
+            for i in range(first_span, last_span):
                 if lines[key][i] == ' ':
+                    char = '━'
+                    if i == first_span and infos[key][i][4] < start_trace:
+                        char = '┗'
+                    elif i == last_span - 1 and end_trace < infos[key][i][5]:
+                        char = '┛'
                     if parts[4] == 'D':
-                        lines[key][i] = '[orange1]━[/orange1]'
-                        infos[key][i] = ['D', "", start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), "", ""]
-                    if parts[4] == 'R':
-                        lines[key][i] = '[green1]━[/green1]'
-                        infos[key][i] = ['R', "", start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), "", ""]
-                    if parts[4] == 'Q':
-                        lines[key][i] = '[orchid]━[/orchid]'
-                        infos[key][i] = ['Q', "", start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), "", ""]
-                    if parts[4] == 'M':
-                        lines[key][i] = '[turquoise4]━[/turquoise4]'
-                        infos[key][i] = ['M', "", start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), "", ""]
-                elif '━' in lines[key][i]:
+                        lines[key][i] = f'[orange1]{char}[/orange1]'
+                        infos[key][i] = ['D', infos[key][i][1], start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), infos[key][i][4], infos[key][i][5]]
+                    elif parts[4] == 'R':
+                        lines[key][i] = f'[green1]{char}[/green1]'
+                        infos[key][i] = ['R', infos[key][i][1], start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), infos[key][i][4], infos[key][i][5]]
+                    elif parts[4] == 'Q':
+                        lines[key][i] = f'[orchid]{char}[/orchid]'
+                        infos[key][i] = ['Q', infos[key][i][1], start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), infos[key][i][4], infos[key][i][5]]
+                    elif parts[4] == 'M':
+                        lines[key][i] = f'[turquoise4]{char}[/turquoise4]'
+                        infos[key][i] = ['M', infos[key][i][1], start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), infos[key][i][4], infos[key][i][5]]
+                elif any(c in lines[key][i] for c in ['━', '┗', '┛']):
                     lines[key][i] = '╌'
-                    infos[key][i] = ['1', "", start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), "", ""]
-                elif lines[key][i] == '╌':
+                    # start of gap is the end of previously found trace in this span and end of gap is the start of the new trace
+                    infos[key][i] = ['1', infos[key][i][1], infos[key][i][3], start_trace.strftime("%Y-%m-%dT%H:%M:%S"), infos[key][i][4], infos[key][i][5]]
+                elif lines[key][i] == '╌' or lines[key][i] == '┄':
                     lines[key][i] = '┄'
-                    infos[key][i] = ['2', "", start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), "", ""]
-                elif lines[key][i] == '┄':
-                    infos[key][i] = [str(int(infos[key][i][0])+1), "", start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), "", ""]
+                    # start of gaps is the start of the first gap and end is the start of the new trace
+                    infos[key][i] = [str(int(infos[key][i][0])+1), infos[key][i][1], infos[key][i][2], start_trace.strftime("%Y-%m-%dT%H:%M:%S"), infos[key][i][4], infos[key][i][5]]
         # find longest label to align start of lines
         longest_label = max([len(k) for k in lines.keys()])
         for k in lines:
             infos[k].append(("", "", "", "", "", "")) # because cursor can go one character after the end of the input
-            self.query_one('#results-container').mount(Horizontal(Label(f"{k}{' '*(longest_label-len(k))}"), CursoredText(value=lines[k], info=infos[k], id=f"_{k}"), classes="result-item"))
+            # add infos in long gaps
+            for i in range(num_spans):
+                if lines[k][i] == ' ':
+                    # long gap starts after the latest of the traces that exist before the current span
+                    infos[k][i][2] = max([datetime.strptime(row.split('|')[7], "%Y-%m-%dT%H:%M:%S.%fZ") for row in csv_results if datetime.strptime(row.split('|')[7], "%Y-%m-%dT%H:%M:%S.%fZ") < datetime.strptime(infos[k][i][1], "%Y-%m-%dT%H:%M:%S")] + [start_frame])
+                    # long gap ends before the earliest of the traces that exist after the current span
+                    infos[k][i][3] = min([datetime.strptime(row.split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ") for row in csv_results if datetime.strptime(row.split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ") > datetime.strptime(infos[k][i][1], "%Y-%m-%dT%H:%M:%S")] + [end_frame])
+            # add line in results
+            self.query_one('#results-container').mount(Horizontal(Label(f"{k}{' '*(longest_label-len(k))}"), CursoredText(value=''.join(lines[k]), info=infos[k], id=f"_{k}"), classes="result-item"))
         if self.query(CursoredText):
             self.query(CursoredText)[0].focus()
 
