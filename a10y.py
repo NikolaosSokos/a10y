@@ -368,7 +368,7 @@ class Results(Static):
 
 
 class AvailabilityUI(App):
-    CSS_PATH = "availability_ui.css"
+    CSS_PATH = "a10y.css"
     BINDINGS = [
         Binding("ctlrl+c", "quit", "Quit"),
         Binding("tab/shift+tab", "navigate", "Navigate"),
