@@ -16,6 +16,7 @@ import logging
 import argparse
 import tempfile
 from textual.suggester import Suggester
+import math
 
 
 class FileSuggester(Suggester):
@@ -631,6 +632,64 @@ class AvailabilityUI(App):
 
 
     def show_results(self, csv_results):
+        self.query_one('#results-widget').mount(ContentSwitcher(Container(id="lines"), ScrollableContainer(Static(csv_results, id="plain"), id="plain-container"), initial="lines"))
+        infoBar = Static("Quality:     Timestamp:                       Trace start:                       Trace end:                    ", id="info-bar")
+        self.query_one('#lines').mount(infoBar)
+        self.query_one('#lines').mount(ScrollableContainer(id="results-container"))
+        # cut time frame into desired number of spans
+        num_spans = 130
+        try:
+            start_frame = datetime.strptime(self.query_one("#start").value, "%Y-%m-%dT%H:%M:%S")
+        except:
+            start_frame = datetime.strptime(self.query_one("#start").value+"T00:00:00", "%Y-%m-%dT%H:%M:%S")
+        try:
+            end_frame = datetime.strptime(self.query_one("#end").value, "%Y-%m-%dT%H:%M:%S")
+        except:
+            end_frame = datetime.strptime(self.query_one("#end").value+"T00:00:00", "%Y-%m-%dT%H:%M:%S")
+        span_frame = (end_frame - start_frame) / num_spans
+        lines = {} # for lines of each nslc, contains line characters
+        infos = {} # for the info-bar of each nslc, contains a list of lists (one inner list for each span) for each channel; inner lists format: [quality/gaps, timestamp, trace_start, trace_end, span_start, span_end]
+        csv_results = csv_results.splitlines()[5:]
+        for row in csv_results:
+            parts = row.split('|')
+            key = f"{parts[0]}_{parts[1]}_{parts[2]}_{parts[3]}"
+            if key not in lines:
+                lines[key] = [' ' for i in range(num_spans)]
+                infos[key] = [[] for i in range(num_spans)]
+            start_trace = datetime.strptime(parts[6], "%Y-%m-%dT%H:%M:%S.%fZ")
+            end_trace = datetime.strptime(parts[7], "%Y-%m-%dT%H:%M:%S.%fZ")
+            for i in range(math.floor((start_trace-start_frame) / span_frame), math.ceil((end_trace-start_frame) / span_frame)):
+                if lines[key][i] == ' ':
+                    if parts[4] == 'D':
+                        lines[key][i] = '[orange1]━[/orange1]'
+                        infos[key][i] = ['D', "", start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), "", ""]
+                    if parts[4] == 'R':
+                        lines[key][i] = '[green1]━[/green1]'
+                        infos[key][i] = ['R', "", start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), "", ""]
+                    if parts[4] == 'Q':
+                        lines[key][i] = '[orchid]━[/orchid]'
+                        infos[key][i] = ['Q', "", start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), "", ""]
+                    if parts[4] == 'M':
+                        lines[key][i] = '[turquoise4]━[/turquoise4]'
+                        infos[key][i] = ['M', "", start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), "", ""]
+                elif '━' in lines[key][i]:
+                    lines[key][i] = '╌'
+                    infos[key][i] = ['1', "", start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), "", ""]
+                elif lines[key][i] == '╌':
+                    lines[key][i] = '┄'
+                    infos[key][i] = ['2', "", start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), "", ""]
+                elif lines[key][i] == '┄':
+                    infos[key][i] = [str(int(infos[key][i][0])+1), "", start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), "", ""]
+        # find longest label to align start of lines
+        longest_label = max([len(k) for k in lines.keys()])
+        for k in lines:
+            infos[k].append(("", "", "", "", "", "")) # because cursor can go one character after the end of the input
+            self.query_one('#results-container').mount(Horizontal(Label(f"{k}{' '*(longest_label-len(k))}"), CursoredText(value=lines[k], info=infos[k], id=f"_{k}"), classes="result-item"))
+        if self.query(CursoredText):
+            self.query(CursoredText)[0].focus()
+
+
+    def old_show_results(self, csv_results):
         self.query_one('#results-widget').mount(ContentSwitcher(Container(id="lines"), ScrollableContainer(Static(csv_results, id="plain"), id="plain-container"), initial="lines"))
         infoBar = Static("Quality:     Timestamp:                       Trace start:                       Trace end:                    ", id="info-bar")
         self.query_one('#lines').mount(infoBar)
