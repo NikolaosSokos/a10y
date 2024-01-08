@@ -701,8 +701,10 @@ class AvailabilityUI(App):
                 if lines[k][i] == ' ':
                     # long gap starts after the latest of the traces that exist before the current span
                     infos[k][i][2] = max([datetime.strptime(row.split('|')[7], "%Y-%m-%dT%H:%M:%S.%fZ") for row in csv_results if datetime.strptime(row.split('|')[7], "%Y-%m-%dT%H:%M:%S.%fZ") < datetime.strptime(infos[k][i][1], "%Y-%m-%dT%H:%M:%S")] + [start_frame])
+                    infos[k][i][2] = infos[k][i][2].strftime("%Y-%m-%dT%H:%M:%S")
                     # long gap ends before the earliest of the traces that exist after the current span
                     infos[k][i][3] = min([datetime.strptime(row.split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ") for row in csv_results if datetime.strptime(row.split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ") > datetime.strptime(infos[k][i][1], "%Y-%m-%dT%H:%M:%S")] + [end_frame])
+                    infos[k][i][3] = infos[k][i][3].strftime("%Y-%m-%dT%H:%M:%S")
             # add line in results
             self.query_one('#results-container').mount(Horizontal(Label(f"{k}{' '*(longest_label-len(k))}"), CursoredText(value=''.join(lines[k]), info=infos[k], id=f"_{k}"), classes="result-item"))
         if self.query(CursoredText):
