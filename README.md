@@ -11,7 +11,7 @@ The application is mainly built using [textual](https://textual.textualize.io/) 
 
 You can download a10y in the release section, by choosing the binary that suits your system.
 
-### In a python virtual environment 
+### In a python virtual environment
 
 Clone the sources, create a virtual environment, get dependencies and run as a python script:
 
@@ -23,8 +23,6 @@ source venv/bin/activate
 python -m pip install -r requirements.txt
 python a10y.py
 ```
-
-### With conda
 
 ### With pyinstaller
 
@@ -56,13 +54,9 @@ This will create:
  - a `build` folder
  - a `dist` folder
 
- Into `dist` folder you can find the final executable. By executing through terminal it opens the application:
+ Into `dist` folder you can find the final executable. By executing through terminal, as every other executable in your system, it opens the application:
 ```
-./dist/a10y
-```
-
-The application can be executed as every other executable in your system, for example:
-```
+cd dist
 ./a10y
 ```
 
