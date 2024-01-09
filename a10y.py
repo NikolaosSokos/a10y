@@ -778,6 +778,8 @@ if __name__ == "__main__":
                             help='Node to start the UI with (default is no node)')
         parser.add_argument('-p', '--post', default = None,
                             help='Default file path for POST requests')
+        parser.add_argument('-c', '--config', default = None,
+                            help='Configuration file path')
         return parser.parse_args()
 
     args = parse_arguments()
@@ -815,8 +817,14 @@ if __name__ == "__main__":
     default_merge_quality = False
     default_merge_overlap = True
 
-    config_dir = os.getenv("XDG_CONFIG_DIR", ".")
-    config_file = os.path.join(config_dir, "config.toml")
+    if args.config is not None:
+        config_file = args.config
+    else:
+        config_dir = os.getenv("XDG_CONFIG_DIR", "")
+        if not config_dir:
+            config_file = os.path.join(".", "config.toml")
+        else:
+            config_file = os.path.join(config_dir, "a10y", "config.toml")            
     if os.path.isfile(config_file):
         with open(config_file, 'rb') as f:
             try:
@@ -875,6 +883,9 @@ if __name__ == "__main__":
                 default_merge_quality = True
             if 'overlap' not in config['merge']:
                 default_merge_overlap = False
+    elif args.config is not None:
+        logging.error(f"Config file '{config_file}' not found")
+        sys.exit(1)
 
     app = AvailabilityUI()
     app.run()
