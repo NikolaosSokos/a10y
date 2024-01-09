@@ -50,9 +50,9 @@ pyinstaller --onefile --add-data "a10y.css:." a10y.py -n a10y
 ```
 
 This will create:
- - an `a10y.spec` file
- - a `build` folder
- - a `dist` folder
+  - an `a10y.spec` file
+  - a `build` folder
+  - a `dist` folder
 
  Into `dist` folder you can find the final executable. By executing through terminal, as every other executable in your system, it opens the application:
 ```
@@ -60,13 +60,14 @@ cd dist
 ./a10y
 ```
 
-### Options
+## Options
 
 The application can be executed with the following options:
- - `-n or --node` followed by Node name to start the application using the specified Node for making requests to the availability webservice
- - `-p or --post` followed by path that points to a file to start the application using that file for making POST requests to availability webservice
+  - `-n or --node` followed by Node name to start the application using the specified Node for making requests to the availability webservice
+  - `-p or --post` followed by path that points to a file to start the application using that file for making POST requests to availability webservice
+  - `-c or --config` followed by path that points to a configuration file to start the application using specific default values for requests
 
-### Configuration
+## Configuration
 
 A `config.toml` file with some default values for the parameters of the requests can be provided, so that the application starts with them as selected.
 
