@@ -17,6 +17,7 @@ import argparse
 import tempfile
 from textual.suggester import Suggester
 import math
+import tomli
 
 
 class FileSuggester(Suggester):
@@ -817,68 +818,63 @@ if __name__ == "__main__":
     config_dir = os.getenv("XDG_CONFIG_DIR", ".")
     config_file = os.path.join(config_dir, "config.toml")
     if os.path.isfile(config_file):
-        with open(config_file, 'r') as f:
-            for line in f.readlines():
-                parts = line.split()
+        with open(config_file, 'rb') as f:
+            try:
+                config = tomli.load(f)
+            except:
+                logging.error(f"Invalid format of config file {config_file}")
+                sys.exit(1)
+            # starttime
+            parts = config['starttime'].split()
+            try:
+                num = int(parts[0])
+                default_starttime = (datetime.now() - timedelta(days=num)).strftime("%Y-%m-%dT%H:%M:%S")
+            except:
                 try:
-                    x = parts[0]
+                    datetime.strptime(config['starttime'], "%Y-%m-%dT%H:%M:%S")
+                    default_starttime = config['starttime']
                 except:
-                    continue
-                if parts[0] == "starttime":
-                    try:
-                        num = int(parts[1])
-                        default_starttime = (datetime.now() - timedelta(days=num)).strftime("%Y-%m-%dT%H:%M:%S")
-                    except:
-                        try:
-                            datetime.strptime(parts[1], "%Y-%m-%dT%H:%M:%S")
-                            default_starttime = parts[1]
-                        except:
-                            logging.error(f"Invalid starttime format in config file {config_file}")
-                            sys.exit(1)
-                elif parts[0] == "endtime":
-                    if parts[1] == "now":
-                        pass
-                    else:
-                        try:
-                            datetime.strptime(parts[1], "%Y-%m-%dT%H:%M:%S")
-                            default_endtime = parts[1]
-                        except:
-                            logging.error(f"Invalid endtime format in config file {config_file}")
-                            sys.exit(1)
-                elif parts[0] == "quality":
-                    quals = parts[1].split(',')
-                    if any([q not in ['D', 'R', 'Q', 'M'] for q in quals]):
-                        logging.error(f"Invalid quality codes format in config file {config_file}")
-                        sys.exit(1)
-                    if 'D' not in quals:
-                        default_quality_D = False
-                    if 'R' not in quals:
-                        default_quality_R = False
-                    if 'Q' not in quals:
-                        default_quality_Q = False
-                    if 'M' not in quals:
-                        default_quality_M = False
-                elif parts[0] == "mergegaps":
-                    try:
-                        num = float(parts[1])
-                    except:
-                        logging.error(f"Invalid mergegaps format in config file {config_file}")
-                        sys.exit(1)
-                    default_mergegaps = str(num)
-                elif parts[0] == "merge":
-                    merges = parts[1].split(',')
-                    if any([m not in ['samplerate', 'quality', 'overlap'] for m in merges]):
-                        logging.error(f"Invalid merge options format in config file {config_file}")
-                        sys.exit(1)
-                    if 'samplerate' in merges:
-                        default_merge_samplerate = True
-                    if 'quality' in merges:
-                        default_merge_quality = True
-                    if 'overlap' not in merges:
-                        default_merge_overlap = False
-                else:
-                    logging.error(f"Invalid default '{parts[0]}' in config file '{config_file}'")
+                    logging.error(f"Invalid starttime format in config file {config_file}")
                     sys.exit(1)
+            # endtime
+            if config['endtime'] == "now":
+                pass
+            else:
+                try:
+                    datetime.strptime(config['endtime'], "%Y-%m-%dT%H:%M:%S")
+                    default_endtime = config['endtime']
+                except:
+                    logging.error(f"Invalid endtime format in config file {config_file}")
+                    sys.exit(1)
+            # quality
+            if any([q not in ['D', 'R', 'Q', 'M'] for q in config['quality']]):
+                logging.error(f"Invalid quality codes format in config file {config_file}")
+                sys.exit(1)
+            if 'D' not in config['quality']:
+                default_quality_D = False
+            if 'R' not in config['quality']:
+                default_quality_R = False
+            if 'Q' not in config['quality']:
+                default_quality_Q = False
+            if 'M' not in config['quality']:
+                default_quality_M = False
+            # mergegaps
+            try:
+                num = float(config['mergegaps'])
+            except:
+                logging.error(f"Invalid mergegaps format in config file {config_file}")
+                sys.exit(1)
+            default_mergegaps = str(num)
+            # merge
+            if any([m not in ['samplerate', 'quality', 'overlap'] for m in config['merge']]):
+                logging.error(f"Invalid merge options format in config file {config_file}")
+                sys.exit(1)
+            if 'samplerate' in config['merge']:
+                default_merge_samplerate = True
+            if 'quality' in config['merge']:
+                default_merge_quality = True
+            if 'overlap' not in config['merge']:
+                default_merge_overlap = False
 
     app = AvailabilityUI()
     app.run()

@@ -1,5 +1,5 @@
-starttime 7 days
-endtime now
-quality D,R,Q,M
-mergegaps 0.0
-merge overlap
+starttime = "7 days"
+endtime = "now"
+quality = ["D", "R", "Q", "M"]
+mergegaps = 0.0
+merge = ["overlap"]
