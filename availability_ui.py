@@ -82,7 +82,8 @@ class CursoredText(Input):
         """Update info bar when cursor moves"""
         if self.info[self.cursor_position][1]:
             if self.value[self.cursor_position] == ' ':
-                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gap          Timestamp: {self.info[self.cursor_position][1]}     Gap start: {self.info[self.cursor_position][2]}     Gap end: {self.info[self.cursor_position][3]} ")
+                #self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gap          Timestamp: {self.info[self.cursor_position][1]}     Gap start: {self.info[self.cursor_position][2]}     Gap end: {self.info[self.cursor_position][3]} ")
+                self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gap          Timestamp: {self.info[self.cursor_position][1]} ")
             elif self.info[self.cursor_position][0].isdigit():
                 self.parent.parent.parent.parent.parent.query_one("#info-bar").update(f"Gaps: {self.info[self.cursor_position][0]}      Timestamp: {self.info[self.cursor_position][1]}    Gaps start: {self.info[self.cursor_position][2]}    Gaps end: {self.info[self.cursor_position][3]} ")
             else:
@@ -107,8 +108,8 @@ class CursoredText(Input):
                 self.parent.parent.parent.parent.parent.parent.query_one("#end").value = self.info[self.cursor_position][1]
             # capture time span as start and end time
             elif event.character == 'z':
-                self.parent.parent.parent.parent.parent.parent.query_one("#start").value = self.info[self.cursor_position][4]
-                self.parent.parent.parent.parent.parent.parent.query_one("#end").value = self.info[self.cursor_position][5]
+                self.parent.parent.parent.parent.parent.parent.query_one("#start").value = self.info[self.cursor_position][4].strftime("%Y-%m-%dT%H:%M:%S")
+                self.parent.parent.parent.parent.parent.parent.query_one("#end").value = self.info[self.cursor_position][5].strftime("%Y-%m-%dT%H:%M:%S")
             # toggle results view
             elif event.character == 't':
                 # self.parent.parent.parent.parent = ContentSwitcher
@@ -690,106 +691,24 @@ class AvailabilityUI(App):
                     infos[key][i] = ['1', infos[key][i][1], infos[key][i][3], start_trace.strftime("%Y-%m-%dT%H:%M:%S"), infos[key][i][4], infos[key][i][5]]
                 elif lines[key][i] == '╌' or lines[key][i] == '┄':
                     lines[key][i] = '┄'
-                    # start of gaps is the start of the first gap and end is the start of the new trace
+                    # start of gaps is the start of the first gap in this span and end is the start of the new trace
                     infos[key][i] = [str(int(infos[key][i][0])+1), infos[key][i][1], infos[key][i][2], start_trace.strftime("%Y-%m-%dT%H:%M:%S"), infos[key][i][4], infos[key][i][5]]
         # find longest label to align start of lines
         longest_label = max([len(k) for k in lines.keys()])
         for k in lines:
             infos[k].append(("", "", "", "", "", "")) # because cursor can go one character after the end of the input
             # add infos in long gaps
-            for i in range(num_spans):
-                if lines[k][i] == ' ':
+            # switched off because leads to O(num_spans*num_channels*len(csv_results)) complexity and makes app too slow for long availability output
+            #for i in range(num_spans):
+                #if lines[k][i] == ' ':
                     # long gap starts after the latest of the traces that exist before the current span
-                    infos[k][i][2] = max([datetime.strptime(row.split('|')[7], "%Y-%m-%dT%H:%M:%S.%fZ") for row in csv_results if datetime.strptime(row.split('|')[7], "%Y-%m-%dT%H:%M:%S.%fZ") < datetime.strptime(infos[k][i][1], "%Y-%m-%dT%H:%M:%S")] + [start_frame])
-                    infos[k][i][2] = infos[k][i][2].strftime("%Y-%m-%dT%H:%M:%S")
+                    #infos[k][i][2] = max([datetime.strptime(row.split('|')[7], "%Y-%m-%dT%H:%M:%S.%fZ") for row in csv_results if datetime.strptime(row.split('|')[7], "%Y-%m-%dT%H:%M:%S.%fZ") < datetime.strptime(infos[k][i][1], "%Y-%m-%dT%H:%M:%S")] + [start_frame])
+                    #infos[k][i][2] = infos[k][i][2].strftime("%Y-%m-%dT%H:%M:%S")
                     # long gap ends before the earliest of the traces that exist after the current span
-                    infos[k][i][3] = min([datetime.strptime(row.split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ") for row in csv_results if datetime.strptime(row.split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ") > datetime.strptime(infos[k][i][1], "%Y-%m-%dT%H:%M:%S")] + [end_frame])
-                    infos[k][i][3] = infos[k][i][3].strftime("%Y-%m-%dT%H:%M:%S")
+                    #infos[k][i][3] = min([datetime.strptime(row.split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ") for row in csv_results if datetime.strptime(row.split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ") > datetime.strptime(infos[k][i][1], "%Y-%m-%dT%H:%M:%S")] + [end_frame])
+                    #infos[k][i][3] = infos[k][i][3].strftime("%Y-%m-%dT%H:%M:%S")
             # add line in results
             self.query_one('#results-container').mount(Horizontal(Label(f"{k}{' '*(longest_label-len(k))}"), CursoredText(value=''.join(lines[k]), info=infos[k], id=f"_{k}"), classes="result-item"))
-        if self.query(CursoredText):
-            self.query(CursoredText)[0].focus()
-
-
-    def old_show_results(self, csv_results):
-        self.query_one('#results-widget').mount(ContentSwitcher(Container(id="lines"), ScrollableContainer(Static(csv_results, id="plain"), id="plain-container"), initial="lines"))
-        infoBar = Static("Quality:     Timestamp:                       Trace start:                       Trace end:                    ", id="info-bar")
-        self.query_one('#lines').mount(infoBar)
-        self.query_one('#lines').mount(ScrollableContainer(id="results-container"))
-        # cut time frame into desired number of spans to see for how many of them a trace lasts
-        num_spans = 130
-        try:
-            start_frame = datetime.strptime(self.query_one("#start").value, "%Y-%m-%dT%H:%M:%S")
-        except:
-            start_frame = datetime.strptime(self.query_one("#start").value+"T00:00:00", "%Y-%m-%dT%H:%M:%S")
-        try:
-            end_frame = datetime.strptime(self.query_one("#end").value, "%Y-%m-%dT%H:%M:%S")
-        except:
-            end_frame = datetime.strptime(self.query_one("#end").value+"T00:00:00", "%Y-%m-%dT%H:%M:%S")
-        span_frame = (end_frame - start_frame) / num_spans
-        lines = {} # for lines of each nslc, contains line characters
-        infos = {} # for the info-bar of each nslc, contains a list of tuple (one for each span) for each channel; tuple format: (quality/gaps, timestamp, trace_start, trace_end, span_start, span_end)
-        csv_results = csv_results.splitlines()[5:]
-        for span in range(num_spans):
-            # find traces and quality codes (U for undefined, i.e. initialization or traces with different codes exist)
-            # for each span of each nslc line
-            span_start = start_frame + span * span_frame
-            span_end = end_frame if span == num_spans -1 else start_frame + (span + 1) * span_frame
-            traces_qual = {}
-            for i, row in enumerate(csv_results):
-                parts = row.split('|')
-                key = f"{parts[0]}_{parts[1]}_{parts[2]}_{parts[3]}"
-                start_trace = datetime.strptime(parts[6], "%Y-%m-%dT%H:%M:%S.%fZ")
-                end_trace = datetime.strptime(parts[7], "%Y-%m-%dT%H:%M:%S.%fZ")
-                traces_qual[key] = traces_qual.get(key, [[], 'U']) # initialization
-                # below condition explained: if trace has at least a part of it into the current span
-                if (span_start <= start_trace < span_end or
-                    span_start < end_trace <= span_end or
-                    start_trace <= span_start < span_end <= end_trace):
-                    traces_qual[key][0].append(i) # row i has a part into span
-                    if len(traces_qual[key][0]) == 1:
-                        traces_qual[key][1] = parts[4] # first trace for span gives quality code
-                    else:
-                        traces_qual[key][1] = 'U' # if more traces in one span => undefined quality code
-            # write current span for each nslc line
-            for key in traces_qual:
-                lines[key] = lines.get(key, "") # initialization
-                infos[key] = infos.get(key, []) # initialization
-                timestamp = (start_frame+(span+0.5)*span_frame).strftime("%Y-%m-%dT%H:%M:%S") # middle of span
-                if len(traces_qual[key][0]) == 0:
-                    lines[key] += ' '
-                    infos[key].append(("", timestamp, "", "", span_start.strftime("%Y-%m-%dT%H:%M:%S"), span_end.strftime("%Y-%m-%dT%H:%M:%S")))
-                elif len(traces_qual[key][0]) == 1:
-                    start_trace = datetime.strptime(csv_results[traces_qual[key][0][0]].split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ")
-                    end_trace = datetime.strptime(csv_results[traces_qual[key][0][0]].split('|')[7], "%Y-%m-%dT%H:%M:%S.%fZ")
-                    # see if trace starts or ends in the middle of span
-                    if span_start < start_trace < span_end:
-                        char = '┗'
-                    elif  span_start < end_trace < span_end:
-                        char = '┛'
-                    else:
-                        char = '━'
-                    if traces_qual[key][1] == 'D':
-                        lines[key] += f"[orange1]{char}[/orange1]"
-                    elif traces_qual[key][1] == 'R':
-                        lines[key] += f"[green1]{char}[/green1]"
-                    elif traces_qual[key][1] == 'Q':
-                        lines[key] += f"[orchid]{char}[/orchid]"
-                    elif traces_qual[key][1] == 'M':
-                        lines[key] += f"[turquoise4]{char}[/turquoise4]"
-                    infos[key].append((traces_qual[key][1], timestamp, start_trace.strftime("%Y-%m-%dT%H:%M:%S"), end_trace.strftime("%Y-%m-%dT%H:%M:%S"), span_start.strftime("%Y-%m-%dT%H:%M:%S"), span_end.strftime("%Y-%m-%dT%H:%M:%S")))
-                else:
-                    lines[key] += '╌' if len(traces_qual[key][0]) == 2 else '┄'
-                    # gaps start after the earliest of the traces that are included ends
-                    start_gaps = min([datetime.strptime(csv_results[sg].split('|')[7], "%Y-%m-%dT%H:%M:%S.%fZ") for sg in traces_qual[key][0]])
-                    # gaps end before the latest of the traces that are included starts
-                    end_gaps = max([datetime.strptime(csv_results[sg].split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ") for sg in traces_qual[key][0]])
-                    infos[key].append((str(len(traces_qual[key][0])-1), timestamp, start_gaps.strftime("%Y-%m-%dT%H:%M:%S"), end_gaps.strftime("%Y-%m-%dT%H:%M:%S"), span_start.strftime("%Y-%m-%dT%H:%M:%S"), span_end.strftime("%Y-%m-%dT%H:%M:%S")))
-        # find longest label to align start of lines
-        longest_label = max([len(k) for k in lines.keys()])
-        for k in lines:
-            infos[k].append(("", "", "", "", "", "")) # because cursor can go one character after the end of the input
-            self.query_one('#results-container').mount(Horizontal(Label(f"{k}{' '*(longest_label-len(k))}"), CursoredText(value=lines[k], info=infos[k], id=f"_{k}"), classes="result-item"))
         if self.query(CursoredText):
             self.query(CursoredText)[0].focus()
 
