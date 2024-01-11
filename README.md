@@ -13,7 +13,7 @@ You can download a10y in the release section, by choosing the binary that suits 
 
 ### In a python virtual environment
 
-Clone the sources, create a virtual environment, get dependencies and run as a python script:
+Clone the sources, create a virtual environment, install dependencies and run as a python script:
 
 ```
 git clone https://github.com/EIDA/a10y.git
@@ -24,29 +24,32 @@ python -m pip install -r requirements.txt
 python a10y.py
 ```
 
-### With pyinstaller
+### With conda
 
-This method is intended to provide a portable executable for the application.
+Supposing you have [anaconda](https://www.anaconda.com/) or [miniconda](https://docs.conda.io/projects/miniconda/en/latest/) installed in your system, follow the steps below.
 
-The application can be installed on every system using [pyinstaller](https://pyinstaller.org/en/stable/).
-
-It has been tested in an Ubuntu machine with pyinstaller version 6.3.0.
-
-To install pyinstaller execute:
-
-```
-pip install pyinstaller
-```
-
-Clone from GitHub and move into project folder:
+Clone the sources, create a conda environment, install dependencies and run as a python script:
 ```
 git clone https://github.com/EIDA/a10y.git
 cd a10y
+conda create --name a10yEnv python=3.8
+conda activate a10yEnv
+python -m pip install -r requirements.txt
+python a10y.py
 ```
 
-Execute pyinstaller as below:
+### With pyinstaller
+
+This method is intended to provide a portable standalone executable for the application.
+
+The executable can be created on every system using [pyinstaller](https://pyinstaller.org/en/stable/).
+
+It has been tested in an Ubuntu machine with pyinstaller version 6.3.0.
+
+**After having created a python or conda environment, activated it and installed dependencies as shown above**, install pyinstaller and execute it as below:
 ```
-pyinstaller --onefile --add-data "a10y.css:." a10y.py -n a10y
+python -m pip install pyinstaller
+pyinstaller --onefile --add-data "a10y.css:." a10y.py
 ```
 
 This will create:
@@ -59,6 +62,8 @@ This will create:
 cd dist
 ./a10y
 ```
+
+The final executable can be redistributed and be used as a standalone executable to any system with similar operating system as the one in which it was created.
 
 ## Options
 
