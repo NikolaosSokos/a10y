@@ -9,7 +9,8 @@ on:
     branches:
       - "main"
       - "dev-js"
-      - "refs/tags/*"
+   tags:
+      - "*"
   pull_request:
     branches: [ "main" ]
 
