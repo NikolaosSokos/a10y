@@ -1,0 +1,43 @@
+---
+# This workflow will create a release with artifacts created by other workflow uploaded, whenever a new tag is created.
+
+name: Create Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Git
+      run: |
+        git config user.email "${{ secrets.GITHUB_ACTOR }}@users.noreply.github.com"
+        git config user.name "${{ secrets.GITHUB_ACTOR }}"
+
+    - name: Download Linux Artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: a10y-linux-x86_64
+
+    - name: Download Windows Artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: a10y-win
+
+    - name: Download MacOS Artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: a10y-macos
+
+    - name: Create Release
+      run: |
+        tag=$(git describe --tags --abbrev=0)
+        echo "Creating release for tag $tag"
+        gh release create "$tag" a10y-linux-x86_64 a10y-win a10y-macos
