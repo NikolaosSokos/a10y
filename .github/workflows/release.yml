@@ -9,6 +9,14 @@ on:
       - '*'
 
 jobs:
+  wait:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Other Workflow
+        uses: actions/wait-for-workflow@v2
+        with:
+          workflow: "Python application"
+
   create-release:
     runs-on: ubuntu-latest
 
