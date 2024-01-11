@@ -6,7 +6,10 @@ name: Python application
 
 on:
   push:
-    branches: [ "main", "dev-js", "refs/tags/*" ]
+    branches:
+      - "main"
+      - "dev-js"
+      - "refs/tags/*"
   pull_request:
     branches: [ "main" ]
 
