@@ -9,16 +9,15 @@ on:
       - '*'
 
 jobs:
-  wait:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Wait for Other Workflow
-        uses: actions/wait-for-workflow@v2
-        with:
-          workflow: "Python application"
+  pyinstaller:
+    uses: ./.github/workflows/pyinstaller.yml
 
   create-release:
     runs-on: ubuntu-latest
+    needs: [pyinstaller]
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
     - name: Checkout code
@@ -29,23 +28,14 @@ jobs:
         git config user.email "${{ secrets.GITHUB_ACTOR }}@users.noreply.github.com"
         git config user.name "${{ secrets.GITHUB_ACTOR }}"
 
-    - name: Download Linux Artifact
+    - name: Download Artifacts
       uses: actions/download-artifact@v2
-      with:
-        name: a10y-linux-x86_64
-
-    - name: Download Windows Artifact
-      uses: actions/download-artifact@v2
-      with:
-        name: a10y-win
-
-    - name: Download MacOS Artifact
-      uses: actions/download-artifact@v2
-      with:
-        name: a10y-macos
 
     - name: Create Release
       run: |
         tag=$(git describe --tags --abbrev=0)
         echo "Creating release for tag $tag"
-        gh release create "$tag" a10y-linux-x86_64 a10y-win a10y-macos
+        mv a10y-linux-x86_64/a10y . && rmdir a10y-linux-x86_64 && mv a10y a10y-linux-x86_64
+        mv a10y-win.exe/a10y.exe . && rmdir a10y-win.exe && mv a10y.exe a10y-win.exe
+        mv a10y-macos.exe/a10y . && rmdir a10y-macos.exe && mv a10y a10y-macos.exe
+        gh release create "$tag" a10y-linux-x86_64 a10y-win.exe a10y-macos.exe

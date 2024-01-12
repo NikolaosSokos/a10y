@@ -9,10 +9,10 @@ on:
     branches:
       - "main"
       - "dev-js"
-    tags:
-      - "*"
   pull_request:
     branches: [ "main" ]
+
+  workflow_call:
 
 permissions:
   contents: read
