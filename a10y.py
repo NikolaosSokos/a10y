@@ -666,7 +666,7 @@ class AvailabilityUI(App):
             start_trace = datetime.strptime(parts[6], "%Y-%m-%dT%H:%M:%S.%fZ")
             end_trace = datetime.strptime(parts[7], "%Y-%m-%dT%H:%M:%S.%fZ")
             first_span = math.floor((start_trace-start_frame) / span_frame)
-            last_span = math.ceil((end_trace-start_frame) / span_frame)
+            last_span = min(math.ceil((end_trace-start_frame) / span_frame), num_spans)
             for i in range(first_span, last_span):
                 if lines[key][i] == ' ':
                     char = '━'
@@ -824,7 +824,7 @@ if __name__ == "__main__":
         if not config_dir:
             config_file = os.path.join(".", "config.toml")
         else:
-            config_file = os.path.join(config_dir, "a10y", "config.toml")            
+            config_file = os.path.join(config_dir, "a10y", "config.toml")
     if os.path.isfile(config_file):
         with open(config_file, 'rb') as f:
             try:
