@@ -287,7 +287,6 @@ class Requests(Static):
                 Label("Node:", classes="request-label", id="node-label"),
                 Select(nodes_selection, prompt="Choose Node", value=Select.BLANK if args.node is None else default_node, id="nodes")
             ),
-            Input(placeholder="Enter Node Availability URL", id="baseurl"), # for the case of user entering availability endpoint URL
             Input(placeholder="Enter POST file path", value=default_file, suggester=FileSuggester(), id="post-file"),
             Horizontal(
                 Button("Send", variant="primary", id="request-button"),
@@ -409,7 +408,6 @@ class AvailabilityUI(App):
         """A function to issue appropriate request and update status when a Node or when a common time frame is selected"""
         if event.select == self.query_one("#nodes"):
             if event.value and self.query_one("#nodes").value != Select.BLANK:
-                self.query_one("#baseurl").add_class("hide") # hide user typing URL input if has chosen to select from dropdown
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nChecking {event.value}availability/1/query')
                 self.query_one("#status-container").scroll_end()
                 r = requests.get(event.value+"availability/1/query")
@@ -430,7 +428,6 @@ class AvailabilityUI(App):
                     self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Availability URL is not valid[/red]')
                     self.query_one("#status-container").scroll_end()
             else:
-                self.query_one("#baseurl").remove_class("hide") # show input for typing URL if user does not want to select from dropdown
                 self.query_one("#status-container").scroll_end()
 
         if event.select == self.query_one("#times"):
@@ -469,64 +466,56 @@ class AvailabilityUI(App):
 
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        """A function to change status when an availability endpoint URL or an NSLC input field is submitted (i.e. is typed and enter is hit)"""
-        # for typing availability endpoint URL
-        if event.input == self.query_one("#baseurl"):
-            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nChecking {event.value}')
-            self.query_one("#status-container").scroll_end()
-            try:
-                r = requests.get(event.value)
-            except (requests.exceptions.InvalidURL, requests.exceptions.MissingSchema, requests.exceptions.ConnectionError):
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Invalid availability URL[/red]')
-                self.query_one("#status-container").scroll_end()
-                return None
-            if r.status_code == 400 and 'availability' in r.text:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Valid availability URL[/green]')
-                self.query_one("#status-container").scroll_end()
-            else:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Invalid availability URL[/red]')
-                self.query_one("#status-container").scroll_end()
+        """A function to change status when an NSLC input field is submitted (i.e. is typed and enter is hit)"""
         # for typing network
-        elif event.input == self.query_one("#network"):
-            # handle case of submitting without having selected Node
-            if self.query_one('#nodes').value is None:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Please select a Node[/red]')
-                self.query_one("#status-container").scroll_end()
-                return None
-            # get available stations from FDSN
+        if event.input == self.query_one("#network"):
+            # get available stations from routing system
             net = self.query_one('#network').value
-            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving Stations from {self.query_one("#nodes").value}station/1/query?{"network="+net if net else ""}&format=text')
+            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving URLs from {routing}service=station&format=json{"&net="+net if net else ""}')
             self.query_one("#status-container").scroll_end()
-            r = requests.get(f"{self.query_one('#nodes').value}station/1/query?{'network='+net if net else ''}&format=text")
+            r = requests.get(f'{routing}service=station&format=json{"&net="+net if net else ""}')
             if r.status_code != 200:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve Stations from {self.query_one("#nodes").value}station/1/query?{"network="+net if net else ""}&format=text[/red]')
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve URLs from {routing}service=station&format=json{"&net="+net if net else ""}[/red]')
                 self.query_one("#status-container").scroll_end()
             else:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved Stations from {self.query_one("#nodes").value}station/1/query?{"network="+net if net else ""}&format=text[/green]')
-                self.query_one("#status-container").scroll_end()
-                autocomplete = self.query_one("#stations")
-                autocomplete.items = [DropdownItem(s.split('|')[1]) for s in r.text.splitlines()[1:]]
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved URLs from {routing}service=station&format=json{"&net="+net if net else ""}[/green]')
+                urls = [obj['url'] for obj in r.json()]
+                for url in urls:
+                    self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving Stations from {url}?format=text{"&net="+net if net else ""}')
+                    self.query_one("#status-container").scroll_end()
+                    r = requests.get(f'{url}?format=text{"&net="+net if net else ""}')
+                    if r.status_code != 200:
+                        self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve Stations from {url}?format=text{"&net="+net if net else ""}[/red]')
+                        self.query_one("#status-container").scroll_end()
+                    else:
+                        self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved Stations from {url}?format=text{"&net="+net if net else ""}[/green]')
+                        self.query_one("#status-container").scroll_end()
+                        autocomplete = self.query_one("#stations")
+                        autocomplete.items += [DropdownItem(s.split('|')[1]) for s in r.text.splitlines()[1:]]
         # for typing station
         elif event.input == self.query_one("#station"):
-            # handle case of submitting without having selected Node
-            if self.query_one('#nodes').value is None:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Please select a Node[/red]')
-                self.query_one("#status-container").scroll_end()
-                return None
             # get available channels from FDSN
             net = self.query_one('#network').value
             sta = self.query_one('#station').value
-            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving Channels from {self.query_one("#nodes").value}station/1/query?{"network="+net if net else ""}{"&station="+sta if sta else ""}&level=channel&format=text')
+            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving URL from {routing}service=station&format=post{"&net="+net if net else ""}{"&sta="+sta if sta else ""}')
             self.query_one("#status-container").scroll_end()
-            r = requests.get(f"{self.query_one('#nodes').value}station/1/query?{'network='+net if net else ''}{'&station='+sta if sta else ''}&level=channel&format=text")
+            r = requests.get(f'{routing}service=station&format=post{"&net="+net if net else ""}{"&sta="+sta if sta else ""}')
             if r.status_code != 200:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve Channels from {self.query_one("#nodes").value}station/1/query?{"network="+net if net else ""}{"&station="+sta if sta else ""}&level=channel&format=text[/red]')
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve URL from {routing}service=station&format=json{"&net="+net if net else ""}{"&sta="+sta if sta else ""}[/red]')
                 self.query_one("#status-container").scroll_end()
             else:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved Channels from {self.query_one("#nodes").value}station/1/query?{"network="+net if net else ""}{"&station="+sta if sta else ""}&level=channel&format=text[/green]')
+                url = r.text.splitlines()[0]
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving Channels from {url}?format=text&level=channel{"&net="+net if net else ""}{"&sta="+sta if sta else ""}')
                 self.query_one("#status-container").scroll_end()
-                autocomplete = self.query_one("#channels")
-                autocomplete.items = [DropdownItem(unique) for unique in {c.split('|')[3] for c in r.text.splitlines()[1:]}]
+                r = requests.get(f'{url}?format=text&level=channel{"&net="+net if net else ""}{"&sta="+sta if sta else ""}')
+                if r.status_code != 200:
+                    self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve Channels from {url}?format=text&level=channel{"&net="+net if net else ""}{"&sta="+sta if sta else ""}[/red]')
+                    self.query_one("#status-container").scroll_end()
+                else:
+                    self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved Channels from {url}?format=text&level=channel{"&net="+net if net else ""}{"&sta="+sta if sta else ""}[/green]')
+                    self.query_one("#status-container").scroll_end()
+                    autocomplete = self.query_one("#channels")
+                    autocomplete.items = [DropdownItem(unique) for unique in {c.split('|')[3] for c in r.text.splitlines()[1:]}]
 
 
     @work(exclusive=True, thread=True)
@@ -538,7 +527,7 @@ class AvailabilityUI(App):
                 self.req = requests.get(request)
             else:
                 node = self.query_one("#nodes").value if self.query_one("#nodes").value != Select.BLANK else None
-                url = node + 'availability/1/query' if node else self.query_one('#baseurl').value
+                url = node + 'availability/1/query' if node else ""
                 with open(request, 'rb') as file:
                     self.req = requests.post(url, files={'file': file})
         except (requests.exceptions.InvalidURL, requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema, requests.exceptions.ConnectionError):
@@ -576,22 +565,9 @@ class AvailabilityUI(App):
         self.query_one("#loading").remove_class("hide")
         # build request
         node = self.query_one("#nodes").value if self.query_one("#nodes").value != Select.BLANK else None
-        # abort if not node selected and invalid availability URL endpoint typed
+        # abort if no node selected
         if node is None:
-            try:
-                r = requests.get(self.query_one('#baseurl').value)
-            except (requests.exceptions.InvalidURL, requests.exceptions.MissingSchema, requests.exceptions.ConnectionError):
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Invalid availability URL[/red]')
-                self.query_one("#status-container").scroll_end()
-                # hide loading indicator
-                self.query_one("#loading").add_class("hide")
-                return None
-            if not (r.status_code == 400 and 'availability' in r.text):
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Invalid availability URL[/red]')
-                self.query_one("#status-container").scroll_end()
-                # hide loading indicator
-                self.query_one("#loading").add_class("hide")
-                return None
+            return None
         net = self.query_one("#network").value
         sta = self.query_one("#station").value
         loc = self.query_one("#location").value
@@ -603,7 +579,7 @@ class AvailabilityUI(App):
         quality = ",".join([q for q, bool in zip(['D', 'R', 'Q', 'M'], [self.query_one("#qd").value, self.query_one("#qr").value, self.query_one("#qq").value, self.query_one("#qm").value]) if bool])
         # request from send button
         if event.button == self.query_one("#request-button"):
-            request = f"{node+'availability/1/query' if node else self.query_one('#baseurl').value}?format=geocsv{'&network='+net if net else ''}{'&station='+sta if sta else ''}{'&location='+loc if loc else ''}{'&channel='+cha if cha else ''}{'&starttime='+start if start else ''}{'&endtime='+end if end else ''}{'&merge='+merge if merge else ''}{'&quality='+quality if quality else ''}{'&mergegaps='+mergegaps if mergegaps else ''}"
+            request = f"{node+'availability/1/query'}?format=geocsv{'&network='+net if net else ''}{'&station='+sta if sta else ''}{'&location='+loc if loc else ''}{'&channel='+cha if cha else ''}{'&starttime='+start if start else ''}{'&endtime='+end if end else ''}{'&merge='+merge if merge else ''}{'&quality='+quality if quality else ''}{'&mergegaps='+mergegaps if mergegaps else ''}"
             self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nIssuing request {request}')
             self.query_one("#status-container").scroll_end()
             self.send_request(request)
@@ -783,6 +759,7 @@ if __name__ == "__main__":
         return parser.parse_args()
 
     args = parse_arguments()
+    routing = 'https://www.orfeus-eu.org/eidaws/routing/1/query?'
     nodes_selection = [
         ("NOA", "https://eida.gein.noa.gr/fdsnws/"),
         ("RESIF", "https://ws.resif.fr/fdsnws/"),
