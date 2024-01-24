@@ -5,6 +5,11 @@ The current repository hosts a user interface terminal application for the Avail
 The application is mainly built using [textual](https://textual.textualize.io/) library for making terminal applications.
 
 
+## Demo video
+
+[![asciicast](https://asciinema.org/a/34B9pYTY6pLilG4x12Q3kwYQI.svg)](https://asciinema.org/a/34B9pYTY6pLilG4x12Q3kwYQI)
+
+
 ## Installation
 
 ### As a binary (recommended)
