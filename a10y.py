@@ -465,57 +465,76 @@ class AvailabilityUI(App):
             end.value = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
 
+    @work(exclusive=True, thread=True)
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """A function to change status when an NSLC input field is submitted (i.e. is typed and enter is hit)"""
+        # keep app responsive while making requests
+        worker = get_current_worker()
         # for typing network
         if event.input == self.query_one("#network"):
+            # clear previous results
+            autocomplete = self.query_one("#stations")
+            autocomplete.items = []
             # get available stations from routing system
             net = self.query_one('#network').value
-            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving URLs from {routing}service=station&format=json{"&net="+net if net else ""}')
+            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving routing info from {routing}service=station&format=post{"&net="+net if net else ""}')
             self.query_one("#status-container").scroll_end()
-            r = requests.get(f'{routing}service=station&format=json{"&net="+net if net else ""}')
+            r = requests.get(f'{routing}service=station&format=post{"&net="+net if net else ""}')
             if r.status_code != 200:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve URLs from {routing}service=station&format=json{"&net="+net if net else ""}[/red]')
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve routing info from {routing}service=station&format=post{"&net="+net if net else ""}[/red]')
                 self.query_one("#status-container").scroll_end()
             else:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved URLs from {routing}service=station&format=json{"&net="+net if net else ""}[/green]')
-                urls = [obj['url'] for obj in r.json()]
-                for url in urls:
-                    self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving Stations from {url}?format=text{"&net="+net if net else ""}')
-                    self.query_one("#status-container").scroll_end()
-                    r = requests.get(f'{url}?format=text{"&net="+net if net else ""}')
-                    if r.status_code != 200:
-                        self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve Stations from {url}?format=text{"&net="+net if net else ""}[/red]')
-                        self.query_one("#status-container").scroll_end()
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved routing info from {routing}service=station&format=post{"&net="+net if net else ""}[/green]')
+                for line in r.text.splitlines()+['']:
+                    if line.startswith('http'):
+                        data = ''
+                        url = line
+                        continue
+                    elif line == "":
+                        self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving Stations from {url}')
+                        r = requests.post(url, data=f'format=text\n{data}')
+                        if r.status_code != 200:
+                            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve Stations from {url}[/red]')
+                            self.query_one("#status-container").scroll_end()
+                        else:
+                            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved Stations from {url}[/green]')
+                            self.query_one("#status-container").scroll_end()
+                            autocomplete.items += [DropdownItem(s.split('|')[1]) for s in r.text.splitlines()[1:]]
                     else:
-                        self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved Stations from {url}?format=text{"&net="+net if net else ""}[/green]')
-                        self.query_one("#status-container").scroll_end()
-                        autocomplete = self.query_one("#stations")
-                        autocomplete.items += [DropdownItem(s.split('|')[1]) for s in r.text.splitlines()[1:]]
+                        data += f'{line}\n'
         # for typing station
         elif event.input == self.query_one("#station"):
+            # clear previous results
+            autocomplete = self.query_one("#channels")
+            autocomplete.items = []
             # get available channels from FDSN
             net = self.query_one('#network').value
             sta = self.query_one('#station').value
-            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving URL from {routing}service=station&format=post{"&net="+net if net else ""}{"&sta="+sta if sta else ""}')
+            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving routing info from {routing}service=station&format=post{"&net="+net if net else ""}{"&sta="+sta if sta else ""}')
             self.query_one("#status-container").scroll_end()
             r = requests.get(f'{routing}service=station&format=post{"&net="+net if net else ""}{"&sta="+sta if sta else ""}')
             if r.status_code != 200:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve URL from {routing}service=station&format=json{"&net="+net if net else ""}{"&sta="+sta if sta else ""}[/red]')
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve routing info from {routing}service=station&format=json{"&net="+net if net else ""}{"&sta="+sta if sta else ""}[/red]')
                 self.query_one("#status-container").scroll_end()
             else:
-                url = r.text.splitlines()[0]
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving Channels from {url}?format=text&level=channel{"&net="+net if net else ""}{"&sta="+sta if sta else ""}')
-                self.query_one("#status-container").scroll_end()
-                r = requests.get(f'{url}?format=text&level=channel{"&net="+net if net else ""}{"&sta="+sta if sta else ""}')
-                if r.status_code != 200:
-                    self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve Channels from {url}?format=text&level=channel{"&net="+net if net else ""}{"&sta="+sta if sta else ""}[/red]')
-                    self.query_one("#status-container").scroll_end()
-                else:
-                    self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved Channels from {url}?format=text&level=channel{"&net="+net if net else ""}{"&sta="+sta if sta else ""}[/green]')
-                    self.query_one("#status-container").scroll_end()
-                    autocomplete = self.query_one("#channels")
-                    autocomplete.items = [DropdownItem(unique) for unique in {c.split('|')[3] for c in r.text.splitlines()[1:]}]
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved routing info from {routing}service=station&format=json{"&net="+net if net else ""}{"&sta="+sta if sta else ""}[/green]')
+                for line in r.text.splitlines()+['']:
+                    if line.startswith('http'):
+                        data = ''
+                        url = line
+                        continue
+                    elif line == "":
+                        self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving Channels from {url}')
+                        r = requests.post(url, data=f'format=text\nlevel=channel\n{data}')
+                        if r.status_code != 200:
+                            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve Channels from {url}[/red]')
+                            self.query_one("#status-container").scroll_end()
+                        else:
+                            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved Channels from {url}[/green]')
+                            self.query_one("#status-container").scroll_end()
+                            autocomplete.items += [DropdownItem(unique) for unique in {c.split('|')[3] for c in r.text.splitlines()[1:]}]
+                    else:
+                        data += f'{line}\n'
 
 
     @work(exclusive=True, thread=True)
