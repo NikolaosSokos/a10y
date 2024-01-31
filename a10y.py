@@ -527,7 +527,7 @@ class AvailabilityUI(App):
             self.query_one("#status-container").scroll_end()
             r = requests.get(f'{routing}service=station&format=post{"&net="+net if net else ""}{"&sta="+sta if sta else ""}')
             if r.status_code != 200:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve routing info from {routing}service=station&format=json{"&net="+net if net else ""}{"&sta="+sta if sta else ""}[/red]')
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve routing info from {routing}service=station&format=post{"&net="+net if net else ""}{"&sta="+sta if sta else ""}[/red]')
                 self.query_one("#status-container").scroll_end()
             else:
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved routing info from {routing}service=station&format=json{"&net="+net if net else ""}{"&sta="+sta if sta else ""}[/green]')
@@ -535,7 +535,6 @@ class AvailabilityUI(App):
                     if line.startswith('http'):
                         data = ''
                         url = line
-                        continue
                     elif line == "":
                         self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving Channels from {url}')
                         r = requests.post(url, data=f'format=text\nlevel=channel\n{data}')
@@ -587,8 +586,10 @@ class AvailabilityUI(App):
         self.query_one("#loading").add_class("hide")
 
 
+    @work(exclusive=True, thread=True)
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """A function to send availability request when Send button is clicked"""
+        worker = get_current_worker()
         # clear previous results
         if self.query(ContentSwitcher):
             self.query_one(ContentSwitcher).remove()
@@ -596,10 +597,6 @@ class AvailabilityUI(App):
         # show loading indicator in results
         self.query_one("#loading").remove_class("hide")
         # build request
-        node = self.query_one("#nodes").value if self.query_one("#nodes").value != Select.BLANK else None
-        # abort if no node selected
-        if node is None:
-            return None
         net = self.query_one("#network").value
         sta = self.query_one("#station").value
         loc = self.query_one("#location").value
@@ -611,6 +608,31 @@ class AvailabilityUI(App):
         quality = ",".join([q for q, bool in zip(['D', 'R', 'Q', 'M'], [self.query_one("#qd").value, self.query_one("#qr").value, self.query_one("#qq").value, self.query_one("#qm").value]) if bool])
         # request from send button
         if event.button == self.query_one("#request-button"):
+            params = f"format=post{'&net='+net if net else ''}{'&sta='+sta if sta else ''}{'&loc='+loc if loc else ''}{'&cha='+cha if cha else ''}{'&start='+start if start else ''}{'&end='+end if end else ''}"
+            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving routing info from {routing}service=availability{params}')
+            self.query_one("#status-container").scroll_end()
+            r = requests.get(f'{routing}service=availability{params}')
+            if r.status_code != 200:
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve routing info from {routing}service=availability{params}[/red]')
+                self.query_one("#status-container").scroll_end()
+            else:
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved routing info from {routing}service=availability{params}[/green]')
+                for line in r.text.splitlines()+['']:
+                    if line.startswith('http'):
+                        data = ''
+                        url = line
+                    elif line == "":
+                        self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nIssuing request to {url}')
+                        r = requests.post(url, data=f'{"quality="+quality+"\n" if quality else ""}{"&mergegaps="+mergegaps+"\n" if mergegaps else ""}{"merge="+merge+"\n" if merge else ""}format=geocsv\n{data}')
+                        if r.status_code != 200:
+                            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve Channels from {url}[/red]')
+                            self.query_one("#status-container").scroll_end()
+                        else:
+                            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved Channels from {url}[/green]')
+                            self.query_one("#status-container").scroll_end()
+                            autocomplete.items += [DropdownItem(unique) for unique in {c.split('|')[3] for c in r.text.splitlines()[1:]}]
+                    else:
+                        data += f'{line}\n'
             request = f"{node+'availability/1/query'}?format=geocsv{'&network='+net if net else ''}{'&station='+sta if sta else ''}{'&location='+loc if loc else ''}{'&channel='+cha if cha else ''}{'&starttime='+start if start else ''}{'&endtime='+end if end else ''}{'&merge='+merge if merge else ''}{'&quality='+quality if quality else ''}{'&mergegaps='+mergegaps if mergegaps else ''}"
             self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nIssuing request {request}')
             self.query_one("#status-container").scroll_end()
