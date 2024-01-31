@@ -465,6 +465,22 @@ class AvailabilityUI(App):
             end.value = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
 
+    @work(thread=True)
+    def parallel_requests_autocomplete(self, url, data) -> None:
+        worker = get_current_worker()
+        autocomplete = self.query_one("#stations")
+        self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving Stations from {url}')
+        r = requests.post(url, data=f'format=text\n{data}')
+        if r.status_code != 200:
+            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]{r.text}[/red]')
+            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve Stations from {url}[/red]')
+            self.query_one("#status-container").scroll_end()
+        else:
+            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved Stations from {url}[/green]')
+            self.query_one("#status-container").scroll_end()
+            autocomplete.items += [DropdownItem(s.split('|')[1]) for s in r.text.splitlines()[1:]]
+
+
     @work(exclusive=True, thread=True)
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """A function to change status when an NSLC input field is submitted (i.e. is typed and enter is hit)"""
@@ -489,19 +505,16 @@ class AvailabilityUI(App):
                     if line.startswith('http'):
                         data = ''
                         url = line
-                        continue
                     elif line == "":
-                        self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving Stations from {url}')
-                        r = requests.post(url, data=f'format=text\n{data}')
-                        if r.status_code != 200:
-                            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve Stations from {url}[/red]')
-                            self.query_one("#status-container").scroll_end()
-                        else:
-                            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved Stations from {url}[/green]')
-                            self.query_one("#status-container").scroll_end()
-                            autocomplete.items += [DropdownItem(s.split('|')[1]) for s in r.text.splitlines()[1:]]
+                        if not worker.is_cancelled:
+                            # execute the requests in parallel and in batches of 150
+                            lines = data.splitlines()
+                            batch_size = 150
+                            for i in range(0, len(lines), batch_size):
+                                batch_data = '\n'.join(lines[i:i+batch_size])
+                                self.parallel_requests_autocomplete(url, batch_data)
                     else:
-                        data += f'{line}\n'
+                        data += f"{' '.join(line.split()[:4])} 1800-01-01 2200-12-31\n"
         # for typing station
         elif event.input == self.query_one("#station"):
             # clear previous results
