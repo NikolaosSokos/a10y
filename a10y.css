@@ -27,22 +27,9 @@ Requests {
   row-span: 4;
 }
 
-#node-label {
-  margin: 1 0 0 2;
-}
-
-#nodes {
-  width: 20;
-}
-
-#baseurl {
-  width: 40;
-  margin-left: 1;
-}
-
 #post-file {
   width: 40;
-  margin-left: 1;
+  margin: 3 0 3 1;
 }
 
 .hide {

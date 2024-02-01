@@ -117,12 +117,13 @@ class CursoredText(Input):
                 self.parent.parent.parent.parent.current = "plain-container"
                 if self.parent.parent.parent.parent.parent.parent.parent.focused in self.parent.parent.query(CursoredText):
                     active_nslc = self.parent.parent.parent.parent.parent.parent.parent.focused.id.split('_')[1:]
-                    text = self.parent.parent.parent.parent.parent.parent.parent.parent.req.text.splitlines()
-                    new_text = '\n'.join(text[:5])
+                    text = self.parent.parent.parent.parent.parent.parent.parent.parent.req_text.splitlines()
+                    new_text = '\n'.join(text[:6])
                     for row in text[5:]:
                         parts = row.split('|')
-                        if all([p == an for (p, an) in zip(parts, active_nslc)]):
-                            new_text += '\n' + row
+                        if parts:
+                            if all([p == an for (p, an) in zip(parts, active_nslc)]):
+                                new_text += '\n' + row
                     self.parent.parent.parent.parent.query_one("#plain").update(new_text)
             # toggle help
             elif event.character == '?':
@@ -283,10 +284,6 @@ class Requests(Static):
     def compose(self) -> ComposeResult:
         yield Static("[b]Requests Control[/b]", id="request-title")
         yield Container(
-            Horizontal(
-                Label("Node:", classes="request-label", id="node-label"),
-                Select(nodes_selection, prompt="Choose Node", value=Select.BLANK if args.node is None else default_node, id="nodes")
-            ),
             Input(placeholder="Enter POST file path", value=default_file, suggester=FileSuggester(), id="post-file"),
             Horizontal(
                 Button("Send", variant="primary", id="request-button"),
@@ -383,7 +380,7 @@ class AvailabilityUI(App):
         Binding("escape", "cancel_request", "Cancel request", show=False),
     ]
 
-    req = None
+    req_text = ""
 
     def compose(self) -> ComposeResult:
         self.title = "Availability UI"
@@ -406,30 +403,6 @@ class AvailabilityUI(App):
 
     def on_select_changed(self, event: Select.Changed) -> None:
         """A function to issue appropriate request and update status when a Node or when a common time frame is selected"""
-        if event.select == self.query_one("#nodes"):
-            if event.value and self.query_one("#nodes").value != Select.BLANK:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nChecking {event.value}availability/1/query')
-                self.query_one("#status-container").scroll_end()
-                r = requests.get(event.value+"availability/1/query")
-                if 'availability' in r.text:
-                    # get available networks from FDSN
-                    self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving Networks from {event.value}station/1/query?level=network&format=text')
-                    self.query_one("#status-container").scroll_end()
-                    r = requests.get(event.value+"station/1/query?level=network&format=text")
-                    if r.status_code != 200:
-                        self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve Networks from {event.value}station/1/query?level=network&format=text[/red]')
-                        self.query_one("#status-container").scroll_end()
-                    else:
-                        self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved Networks from {event.value}station/1/query?level=network&format=text[/green]')
-                        self.query_one("#status-container").scroll_end()
-                        autocomplete_nets = self.query_one("#networks")
-                        autocomplete_nets.items = [DropdownItem(n.split('|')[0]) for n in r.text.splitlines()[1:]]
-                else:
-                    self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Availability URL is not valid[/red]')
-                    self.query_one("#status-container").scroll_end()
-            else:
-                self.query_one("#status-container").scroll_end()
-
         if event.select == self.query_one("#times"):
             start = self.query_one("#start")
             mergegaps = self.query_one("#mergegaps")
@@ -472,13 +445,11 @@ class AvailabilityUI(App):
         self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving Stations from {url}')
         r = requests.post(url, data=f'format=text\n{data}')
         if r.status_code != 200:
-            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]{r.text}[/red]')
             self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve Stations from {url}[/red]')
-            self.query_one("#status-container").scroll_end()
         else:
             self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved Stations from {url}[/green]')
-            self.query_one("#status-container").scroll_end()
             autocomplete.items += [DropdownItem(s.split('|')[1]) for s in r.text.splitlines()[1:]]
+        self.query_one("#status-container").scroll_end()
 
 
     @work(exclusive=True, thread=True)
@@ -548,7 +519,7 @@ class AvailabilityUI(App):
                     else:
                         data += f'{line}\n'
 
-
+    '''
     @work(exclusive=True, thread=True)
     def send_request(self, request, post=False):
         """A function to send requests in a concurrent fashion, so that app remains responsive and requests can be cancelled"""
@@ -584,15 +555,43 @@ class AvailabilityUI(App):
         self.query_one("#status-container").scroll_end()
         # hide loading indicator
         self.query_one("#loading").add_class("hide")
+    '''
+
+    @work(thread=True)
+    def parallel_requests_availability(self, url, data) -> None:
+        worker = get_current_worker()
+        merge = ",".join([option for option, bool in zip(['samplerate', 'quality', 'overlap'], [self.query_one("#samplerate").value, self.query_one("#qual").value, self.query_one("#overlap").value]) if bool])
+        mergegaps = str(self.query_one("#mergegaps").value)
+        quality = ",".join([q for q, bool in zip(['D', 'R', 'Q', 'M'], [self.query_one("#qd").value, self.query_one("#qr").value, self.query_one("#qq").value, self.query_one("#qm").value]) if bool])
+        self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nIssuing request to {url}')
+        r = requests.post(url, data=f'{"quality="+quality if quality else ""}\n{"mergegaps="+mergegaps if mergegaps else ""}\nformat=geocsv\n{"merge="+merge if merge else ""}\n{data}')
+        if r.status_code == 204:
+            self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]No data available from {url}[/red]')
+            if "hide" not in self.query_one("#loading").classes:
+                self.query_one("#loading").add_class("hide")
+        elif r.status_code != 200:
+            self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]Request to {url} failed. See below for more details[/red]')
+            self.query_one("#error-results").remove_class("hide")
+            self.query_one("#error-results").update(f'[red]{self.query_one("#error-results").renderable}\n{r.text}[/red]')
+            self.query_one("#error-results").scroll_end()
+            if "hide" not in self.query_one("#loading").classes:
+                self.query_one("#loading").add_class("hide")
+        else:
+            self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[green]Request to {url} successfully returned data[/green]')
+            self.req_text += f'\n{r.text}'
+            self.call_from_thread(self.show_results, r.text)
+        self.query_one("#status-container").scroll_end()
 
 
-    @work(exclusive=True, thread=True)
+    #@work(exclusive=True, thread=True)
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """A function to send availability request when Send button is clicked"""
-        worker = get_current_worker()
+        #worker = get_current_worker()
         # clear previous results
+        self.req_text = ""
         if self.query(ContentSwitcher):
             self.query_one(ContentSwitcher).remove()
+        self.query_one("#error-results").update("")
         self.query_one("#error-results").add_class("hide")
         # show loading indicator in results
         self.query_one("#loading").remove_class("hide")
@@ -603,18 +602,16 @@ class AvailabilityUI(App):
         cha = self.query_one("#channel").value
         start = self.query_one("#start").value
         end = self.query_one("#end").value
-        merge = ",".join([option for option, bool in zip(['samplerate', 'quality', 'overlap'], [self.query_one("#samplerate").value, self.query_one("#qual").value, self.query_one("#overlap").value]) if bool])
-        mergegaps = str(self.query_one("#mergegaps").value)
-        quality = ",".join([q for q, bool in zip(['D', 'R', 'Q', 'M'], [self.query_one("#qd").value, self.query_one("#qr").value, self.query_one("#qq").value, self.query_one("#qm").value]) if bool])
         # request from send button
         if event.button == self.query_one("#request-button"):
-            params = f"format=post{'&net='+net if net else ''}{'&sta='+sta if sta else ''}{'&loc='+loc if loc else ''}{'&cha='+cha if cha else ''}{'&start='+start if start else ''}{'&end='+end if end else ''}"
+            params = f"&format=post{'&net='+net if net else ''}{'&sta='+sta if sta else ''}{'&loc='+loc if loc else ''}{'&cha='+cha if cha else ''}{'&start='+start if start else ''}{'&end='+end if end else ''}"
             self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving routing info from {routing}service=availability{params}')
             self.query_one("#status-container").scroll_end()
             r = requests.get(f'{routing}service=availability{params}')
             if r.status_code != 200:
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve routing info from {routing}service=availability{params}[/red]')
                 self.query_one("#status-container").scroll_end()
+                self.query_one("#loading").add_class("hide")
             else:
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved routing info from {routing}service=availability{params}[/green]')
                 for line in r.text.splitlines()+['']:
@@ -622,21 +619,16 @@ class AvailabilityUI(App):
                         data = ''
                         url = line
                     elif line == "":
-                        self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nIssuing request to {url}')
-                        r = requests.post(url, data=f'{"quality="+quality+"\n" if quality else ""}{"&mergegaps="+mergegaps+"\n" if mergegaps else ""}{"merge="+merge+"\n" if merge else ""}format=geocsv\n{data}')
-                        if r.status_code != 200:
-                            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve Channels from {url}[/red]')
-                            self.query_one("#status-container").scroll_end()
-                        else:
-                            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved Channels from {url}[/green]')
-                            self.query_one("#status-container").scroll_end()
-                            autocomplete.items += [DropdownItem(unique) for unique in {c.split('|')[3] for c in r.text.splitlines()[1:]}]
+                        #if not worker.is_cancelled:
+                        # execute the requests in parallel and in batches of 100
+                        lines = data.splitlines()
+                        batch_size = 100
+                        for i in range(0, len(lines), batch_size):
+                            batch_data = '\n'.join(lines[i:i+batch_size])
+                            self.parallel_requests_availability(url, batch_data)
                     else:
                         data += f'{line}\n'
-            request = f"{node+'availability/1/query'}?format=geocsv{'&network='+net if net else ''}{'&station='+sta if sta else ''}{'&location='+loc if loc else ''}{'&channel='+cha if cha else ''}{'&starttime='+start if start else ''}{'&endtime='+end if end else ''}{'&merge='+merge if merge else ''}{'&quality='+quality if quality else ''}{'&mergegaps='+mergegaps if mergegaps else ''}"
-            self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nIssuing request {request}')
-            self.query_one("#status-container").scroll_end()
-            self.send_request(request)
+        """
         # request from file button
         elif event.button == self.query_one("#file-button"):
             filename = self.query_one("#post-file").value
@@ -661,13 +653,17 @@ class AvailabilityUI(App):
                 self.query_one("#status-container").scroll_end()
                 # hide loading indicator
                 self.query_one("#loading").add_class("hide")
+        """
 
-
+    #@work(thread=True)
     def show_results(self, csv_results):
-        self.query_one('#results-widget').mount(ContentSwitcher(Container(id="lines"), ScrollableContainer(Static(csv_results, id="plain"), id="plain-container"), initial="lines"))
-        infoBar = Static("Quality:     Timestamp:                       Trace start:                       Trace end:                    ", id="info-bar")
-        self.query_one('#lines').mount(infoBar)
-        self.query_one('#lines').mount(ScrollableContainer(id="results-container"))
+        """The function responsible for drawing and showing the timelines"""
+        worker = get_current_worker()
+        if not self.query(ContentSwitcher):
+            self.query_one('#results-widget').mount(ContentSwitcher(Container(id="lines"), ScrollableContainer(Static(id="plain"), id="plain-container"), initial="lines"))
+            infoBar = Static("Quality:     Timestamp:                       Trace start:                       Trace end:                    ", id="info-bar")
+            self.query_one('#lines').mount(infoBar)
+            self.query_one('#lines').mount(ScrollableContainer(id="results-container"))
         # cut time frame into desired number of spans
         num_spans = 130
         try:
@@ -742,6 +738,8 @@ class AvailabilityUI(App):
             self.query_one('#results-container').mount(Horizontal(Label(f"{k}{' '*(longest_label-len(k))}"), CursoredText(value=''.join(lines[k]), info=infos[k], id=f"_{k}"), classes="result-item"))
         if self.query(CursoredText):
             self.query(CursoredText)[0].focus()
+        if "hide" not in self.query_one("#loading").classes:
+            self.query_one("#loading").add_class("hide")
 
 
     def action_toggle_help(self) -> None:
@@ -843,7 +841,7 @@ if __name__ == "__main__":
     default_quality_R = True
     default_quality_Q = True
     default_quality_M = True
-    default_mergegaps = "0.0"
+    default_mergegaps = "1.0"
     default_merge_samplerate = False
     default_merge_quality = False
     default_merge_overlap = True
