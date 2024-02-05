@@ -611,6 +611,9 @@ class AvailabilityUI(App):
                     self.query_one("#status-container").scroll_end()
                     if "hide" not in self.query_one("#loading").classes:
                         self.query_one("#loading").add_class("hide")
+        # request from file button
+        if event.button == self.query_one("#file-button"):
+            # TODO
 
 
     async def show_results(self, csv_results):
