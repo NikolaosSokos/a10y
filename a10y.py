@@ -481,11 +481,12 @@ class AvailabilityUI(App):
                 self.query_one("#status-container").scroll_end()
             else:
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved routing info from {routing}service=station&format=post{"&net="+net if net else ""}[/green]')
+                self.query_one("#status-container").scroll_end()
                 for line in r.text.splitlines()+['']:
                     if line.startswith('http'):
                         data = ''
                         url = line
-                    elif line == "":
+                    elif line == "" and any([url.startswith(node_url) for node_url in self.query_one("#nodes").selected]):
                         if not worker.is_cancelled:
                             # execute the requests in parallel and in batches of 150
                             lines = data.splitlines()
@@ -511,11 +512,12 @@ class AvailabilityUI(App):
                 self.query_one("#status-container").scroll_end()
             else:
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved routing info from {routing}service=station&format=json{"&net="+net if net else ""}{"&sta="+sta if sta else ""}[/green]')
+                self.query_one("#status-container").scroll_end()
                 for line in r.text.splitlines()+['']:
                     if line.startswith('http'):
                         data = ''
                         url = line
-                    elif line == "":
+                    elif line == "" and any([url.startswith(node_url) for node_url in self.query_one("#nodes").selected]):
                         self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving Channels from {url}')
                         r = requests.post(url, data=f'format=text\nlevel=channel\n{data}')
                         if r.status_code != 200:
@@ -536,6 +538,7 @@ class AvailabilityUI(App):
         mergegaps = str(self.query_one("#mergegaps").value)
         quality = ",".join([q for q, bool in zip(['D', 'R', 'Q', 'M'], [self.query_one("#qd").value, self.query_one("#qr").value, self.query_one("#qq").value, self.query_one("#qm").value]) if bool])
         self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nIssuing request to {url}')
+        self.query_one("#status-container").scroll_end()
         r = requests.post(url, data=f'{"quality="+quality if quality else ""}\n{"mergegaps="+mergegaps if mergegaps else ""}\nformat=geocsv\n{"merge="+merge if merge else ""}\n{data}')
         if r.status_code == 204:
             self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]No data available from {url}[/red]')
@@ -586,20 +589,28 @@ class AvailabilityUI(App):
                 self.query_one("#loading").add_class("hide")
             else:
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved routing info from {routing}service=availability{params}[/green]')
+                self.query_one("#status-container").scroll_end()
+                at_least_one = False
                 for line in r.text.splitlines()+['']:
                     if line.startswith('http'):
                         data = ''
                         url = line
-                    elif line == "":
-                        #if not worker.is_cancelled:
-                        # execute the requests in parallel and in batches of 100
-                        lines = data.splitlines()
-                        batch_size = 100
-                        for i in range(0, len(lines), batch_size):
-                            batch_data = '\n'.join(lines[i:i+batch_size])
-                            self.parallel_requests_availability(url, batch_data)
+                    elif line == "" and any([url.startswith(node_url) for node_url in self.query_one("#nodes").selected]):
+                        if not worker.is_cancelled:
+                            at_least_one = True
+                            # execute the requests in parallel and in batches of 100
+                            lines = data.splitlines()
+                            batch_size = 100
+                            for i in range(0, len(lines), batch_size):
+                                batch_data = '\n'.join(lines[i:i+batch_size])
+                                self.parallel_requests_availability(url, batch_data)
                     else:
                         data += f'{line}\n'
+                if not at_least_one:
+                    self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]No data available[/red]')
+                    self.query_one("#status-container").scroll_end()
+                    if "hide" not in self.query_one("#loading").classes:
+                        self.query_one("#loading").add_class("hide")
 
 
     async def show_results(self, csv_results):
