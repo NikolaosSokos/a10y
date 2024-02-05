@@ -283,8 +283,7 @@ class Requests(Static):
 
     def compose(self) -> ComposeResult:
         yield Static("[b]Requests Control[/b]", id="request-title")
-        yield Container(
-            SelectionList(
+        yield SelectionList(
                 ("GFZ", "https://geofon.gfz-potsdam.de/fdsnws/", True),
                 ("ODC", "https://orfeus-eu.org/fdsnws/", True),
                 ("ETHZ", "https://eida.ethz.ch/fdsnws/", True),
@@ -298,15 +297,7 @@ class Requests(Static):
                 ("KOERI", "https://eida.koeri.boun.edu.tr/fdsnws/", True),
                 ("UIB-NORSAR", "https://eida.geo.uib.no/fdsnws/", True),
                 id="nodes"
-            ),
-            Input(placeholder="Enter POST file path", value=default_file, suggester=FileSuggester(), id="post-file"),
-            Horizontal(
-                Button("Send", variant="primary", id="request-button"),
-                Button("File", variant="primary", id="file-button"),
-                id="buttons"
-            ),
-            id="request-node"
-        )
+            )
         yield Horizontal(
             Label("Network:", classes="request-label"),
             AutoComplete(
@@ -347,21 +338,24 @@ class Requests(Static):
             id="timeframe"
         )
         yield Horizontal(
+            Label("Mergegaps:", classes="request-label"),
+            Input(value=default_mergegaps, type="number", id="mergegaps"),
             Label("Merge Options:", classes="request-label"),
             Checkbox("Samplerate", default_merge_samplerate, id="samplerate"),
             Checkbox("Quality", default_merge_quality, id="qual"),
             Checkbox("Overlap", default_merge_overlap, id="overlap"),
-            id="merge"
-        )
-        yield Horizontal(
-            Label("Mergegaps:", classes="request-label"),
-            Input(value=default_mergegaps, type="number", classes="short-input", id="mergegaps"),
             Label("Quality:", classes="request-label"),
             Checkbox("D", default_quality_D, id="qd"),
             Checkbox("R", default_quality_R, id="qr"),
             Checkbox("Q", default_quality_Q, id="qq"),
             Checkbox("M", default_quality_M, id="qm"),
-            id="gaps-quality"
+            id="options"
+        )
+        yield Horizontal(
+            Button("Send", variant="primary", id="request-button"),
+            Input(placeholder="Enter POST file path", value=default_file, suggester=FileSuggester(), id="post-file"),
+            Button("File", variant="primary", id="file-button"),
+            id="send-request"
         )
 
 
