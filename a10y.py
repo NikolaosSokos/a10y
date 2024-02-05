@@ -1,7 +1,7 @@
 from textual import events
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, ScrollableContainer
-from textual.widgets import Header, Footer, Static, Label, Select, Input, Checkbox, Button, ContentSwitcher, Collapsible, LoadingIndicator
+from textual.widgets import Header, Footer, Static, Label, Select, Input, Checkbox, Button, ContentSwitcher, Collapsible, LoadingIndicator, SelectionList
 from textual.binding import Binding
 from textual_autocomplete import AutoComplete, Dropdown, DropdownItem
 from textual import work
@@ -284,6 +284,21 @@ class Requests(Static):
     def compose(self) -> ComposeResult:
         yield Static("[b]Requests Control[/b]", id="request-title")
         yield Container(
+            SelectionList(
+                ("GFZ", "https://geofon.gfz-potsdam.de/fdsnws/", True),
+                ("ODC", "https://orfeus-eu.org/fdsnws/", True),
+                ("ETHZ", "https://eida.ethz.ch/fdsnws/", True),
+                ("RESIF", "https://ws.resif.fr/fdsnws/", True),
+                ("INGV", "https://webservices.ingv.it/fdsnws/", True),
+                ("LMU", "https://erde.geophysik.uni-muenchen.de/fdsnws/", True),
+                ("ICGC", "https://ws.icgc.cat/fdsnws/", True),
+                ("NOA", "https://eida.gein.noa.gr/fdsnws/", True),
+                ("BGR", "https://eida.bgr.de/fdsnws/", True),
+                ("NIEP", "https://eida-sc3.infp.ro/fdsnws/", True),
+                ("KOERI", "https://eida.koeri.boun.edu.tr/fdsnws/", True),
+                ("UIB-NORSAR", "https://eida.geo.uib.no/fdsnws/", True),
+                id="nodes"
+            ),
             Input(placeholder="Enter POST file path", value=default_file, suggester=FileSuggester(), id="post-file"),
             Horizontal(
                 Button("Send", variant="primary", id="request-button"),
@@ -519,43 +534,6 @@ class AvailabilityUI(App):
                     else:
                         data += f'{line}\n'
 
-    '''
-    @work(exclusive=True, thread=True)
-    def send_request(self, request, post=False):
-        """A function to send requests in a concurrent fashion, so that app remains responsive and requests can be cancelled"""
-        worker = get_current_worker()
-        try:
-            if not post:
-                self.req = requests.get(request)
-            else:
-                node = self.query_one("#nodes").value if self.query_one("#nodes").value != Select.BLANK else None
-                url = node + 'availability/1/query' if node else ""
-                with open(request, 'rb') as file:
-                    self.req = requests.post(url, files={'file': file})
-        except (requests.exceptions.InvalidURL, requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema, requests.exceptions.ConnectionError):
-            self.query_one("#loading").add_class("hide") # hide loading indicator
-            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Please provide a valid availability URL[/red]')
-            self.query_one("#status-container").scroll_end()
-            return None
-        finally:
-            if os.path.isfile(request):
-                os.remove(request) # remove temp file from system
-        if self.req.status_code == 204:
-            self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]No data available[/red]')
-        elif self.req.status_code != 200:
-            self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]Request failed. See below for more details[/red]')
-            self.query_one("#error-results").remove_class("hide")
-            self.query_one("#error-results").update(f"[red]{self.req.text}[/red]")
-        else:
-            if not worker.is_cancelled:
-                self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[green]Request successfully returned data[/green]')
-                self.call_from_thread(self.show_results, self.req.text)
-            else:
-                self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nRequest was cancelled!')
-        self.query_one("#status-container").scroll_end()
-        # hide loading indicator
-        self.query_one("#loading").add_class("hide")
-    '''
 
     @work(thread=True)
     def parallel_requests_availability(self, url, data) -> None:
@@ -583,14 +561,14 @@ class AvailabilityUI(App):
         self.query_one("#status-container").scroll_end()
 
 
-    #@work(exclusive=True, thread=True)
-    def on_button_pressed(self, event: Button.Pressed) -> None:
+    @work(exclusive=True, thread=True)
+    async def on_button_pressed(self, event: Button.Pressed) -> None:
         """A function to send availability request when Send button is clicked"""
-        #worker = get_current_worker()
+        worker = get_current_worker()
         # clear previous results
         self.req_text = ""
         if self.query(ContentSwitcher):
-            self.query_one(ContentSwitcher).remove()
+            await self.query_one(ContentSwitcher).remove()
         self.query_one("#error-results").update("")
         self.query_one("#error-results").add_class("hide")
         # show loading indicator in results
@@ -628,39 +606,12 @@ class AvailabilityUI(App):
                             self.parallel_requests_availability(url, batch_data)
                     else:
                         data += f'{line}\n'
-        """
-        # request from file button
-        elif event.button == self.query_one("#file-button"):
-            filename = self.query_one("#post-file").value
-            if os.path.isfile(filename):
-                self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nReading NSLC from file {filename}')
-                self.query_one("#status-container").scroll_end()
-                with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp:
-                    temp.write(f"quality={quality}\n" if quality else "")
-                    temp.write(f"mergegaps={mergegaps}\n" if mergegaps else "")
-                    temp.write("format=geocsv\n")
-                    temp.write(f"merge={merge}\n" if merge else "")
-                    with open(filename, 'r') as f:
-                        for l in f.readlines():
-                            if '=' not in l:
-                                nslc = l.split('\n')[0].split(' ')
-                                temp.write(f"{nslc[0]} {nslc[1]} {nslc[2]} {nslc[3]} {start} {end}\n")
-                    self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nMaking a POST request with selected file')
-                    self.query_one("#status-container").scroll_end()
-                    self.send_request(request=temp.name, post=True)
-            else:
-                self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]Path "{filename}" does not point to a valid file for POST request[/red]')
-                self.query_one("#status-container").scroll_end()
-                # hide loading indicator
-                self.query_one("#loading").add_class("hide")
-        """
 
-    #@work(thread=True)
-    def show_results(self, csv_results):
+
+    async def show_results(self, csv_results):
         """The function responsible for drawing and showing the timelines"""
-        worker = get_current_worker()
         if not self.query(ContentSwitcher):
-            self.query_one('#results-widget').mount(ContentSwitcher(Container(id="lines"), ScrollableContainer(Static(id="plain"), id="plain-container"), initial="lines"))
+            await self.query_one('#results-widget').mount(ContentSwitcher(Container(id="lines"), ScrollableContainer(Static(id="plain"), id="plain-container"), initial="lines"))
             infoBar = Static("Quality:     Timestamp:                       Trace start:                       Trace end:                    ", id="info-bar")
             self.query_one('#lines').mount(infoBar)
             self.query_one('#lines').mount(ScrollableContainer(id="results-container"))
@@ -720,8 +671,8 @@ class AvailabilityUI(App):
                     lines[key][i] = '┄'
                     # start of gaps is the start of the first gap in this span and end is the start of the new trace
                     infos[key][i] = [str(int(infos[key][i][0])+1), infos[key][i][1], infos[key][i][2], start_trace.strftime("%Y-%m-%dT%H:%M:%S"), infos[key][i][4], infos[key][i][5]]
-        # find longest label to align start of lines
-        longest_label = max([len(k) for k in lines.keys()])
+        # longest possible label to align start of lines
+        longest_label = 24
         for k in lines:
             infos[k].append(("", "", "", "", "", "")) # because cursor can go one character after the end of the input
             # add infos in long gaps
@@ -735,7 +686,7 @@ class AvailabilityUI(App):
                     #infos[k][i][3] = min([datetime.strptime(row.split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ") for row in csv_results if datetime.strptime(row.split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ") > datetime.strptime(infos[k][i][1], "%Y-%m-%dT%H:%M:%S")] + [end_frame])
                     #infos[k][i][3] = infos[k][i][3].strftime("%Y-%m-%dT%H:%M:%S")
             # add line in results
-            self.query_one('#results-container').mount(Horizontal(Label(f"{k}{' '*(longest_label-len(k))}"), CursoredText(value=''.join(lines[k]), info=infos[k], id=f"_{k}"), classes="result-item"))
+            await self.query_one('#results-container').mount(Horizontal(Label(f"{k}{' '*(longest_label-len(k))}"), CursoredText(value=''.join(lines[k]), info=infos[k], id=f"_{k}"), classes="result-item"))
         if self.query(CursoredText):
             self.query(CursoredText)[0].focus()
         if "hide" not in self.query_one("#loading").classes:

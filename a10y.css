@@ -7,6 +7,10 @@ Screen {
   min-width: 150;
 }
 
+.hide {
+  display: none;
+}
+
 #explanations-keys {
   margin-left: 2;
 }
@@ -25,15 +29,16 @@ Requests {
 
 #request-node {
   row-span: 4;
+  margin-left: 1;
+}
+
+#nodes {
+  max-height: 6;
+  width: 40;
 }
 
 #post-file {
   width: 40;
-  margin: 3 0 3 1;
-}
-
-.hide {
-  display: none;
 }
 
 #buttons {
@@ -41,7 +46,7 @@ Requests {
 }
 
 #request-button {
-  margin: 0 6 0 2;
+  margin: 0 6 0 1;
 }
 
 .short-input {
