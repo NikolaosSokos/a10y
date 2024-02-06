@@ -73,7 +73,6 @@ The final executable can be redistributed and be used as a standalone executable
 ## Options
 
 The application can be executed with the following options:
-  - `-n or --node` followed by Node name to start the application using the specified Node for making requests to the availability webservice
   - `-p or --post` followed by path that points to a file to start the application using that file for making POST requests to availability webservice
   - `-c or --config` followed by path that points to a configuration file to start the application using specific default values for requests
 
