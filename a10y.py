@@ -14,7 +14,6 @@ import os
 import sys
 import logging
 import argparse
-import tempfile
 from textual.suggester import Suggester
 import math
 import tomli
@@ -612,8 +611,19 @@ class AvailabilityUI(App):
                     if "hide" not in self.query_one("#loading").classes:
                         self.query_one("#loading").add_class("hide")
         # request from file button
-        if event.button == self.query_one("#file-button"):
-            # TODO
+        elif event.button == self.query_one("#file-button"):
+            filename = self.query_one("#post-file").value
+            if os.path.isfile(filename):
+                self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nReading NSLC from file {filename}')
+                self.query_one("#status-container").scroll_end()
+                data = ''
+                with open(filename, 'r') as f:
+                    for l in f.readlines():
+                        if '=' not in l:
+                            data += f"{' '.join(l.split()[:4])} {start} {end}\n"
+                for url in self.query_one("#nodes").selected:
+                    if not worker.is_cancelled:
+                        self.parallel_requests_availability(url+'availability/1/query', data)
 
 
     async def show_results(self, csv_results):
