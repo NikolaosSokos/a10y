@@ -37,5 +37,5 @@ jobs:
         echo "Creating release for tag $tag"
         mv a10y-linux-x86_64/a10y . && rmdir a10y-linux-x86_64 && mv a10y a10y-linux-x86_64
         mv a10y-win.exe/a10y.exe . && rmdir a10y-win.exe && mv a10y.exe a10y-win.exe
-        mv a10y-macos.app/a10y . && rmdir a10y-macos.app && mv a10y a10y-macos.app
-        gh release create "$tag" a10y-linux-x86_64 a10y-win.exe a10y-macos.app
+        mv a10y-macos.exe/a10y . && rmdir a10y-macos.exe && mv a10y a10y-macos.exe
+        gh release create "$tag" a10y-linux-x86_64 a10y-win.exe a10y-macos.exe
