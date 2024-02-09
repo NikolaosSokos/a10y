@@ -7,6 +7,10 @@ Screen {
   min-width: 150;
 }
 
+.hide {
+  display: none;
+}
+
 #explanations-keys {
   margin-left: 2;
 }
@@ -14,7 +18,7 @@ Screen {
 Requests {
   layout: grid;
   grid-size: 5 5;
-  grid-columns: 1.5fr 1fr 1fr 1fr 1fr;
+  grid-columns: 0.6fr 1fr 1fr 1fr 1fr;
   grid-rows: 1 3 3 3 3;
   max-height: 15;
 }
@@ -23,57 +27,28 @@ Requests {
   column-span: 5;
 }
 
-#request-node {
-  row-span: 4;
-}
-
-#node-label {
-  margin: 1 0 0 2;
-}
-
 #nodes {
-  width: 20;
+  row-span: 4;
+  max-width: 21;
 }
 
-#baseurl {
-  width: 40;
-  margin-left: 1;
-}
-
-#post-file {
-  width: 40;
-  margin-left: 1;
-}
-
-.hide {
-  display: none;
-}
-
-#buttons {
-  height: auto;
-}
-
-#request-button {
-  margin: 0 6 0 2;
-}
-
-.short-input {
-  width: 15;
+#nslc, #timeframe, #options, #send-request {
+  column-span: 4;
 }
 
 .request-label {
   margin-top: 1;
 }
 
-AutoComplete {
-  max-height: 4;
-  max-width: 15;
-  margin-right: 3;
-  align: left top;
+.short-input {
+  width: 16;
 }
 
-#times {
-  width: 26;
+AutoComplete {
+  max-height: 4;
+  max-width: 16;
+  margin-right: 3;
+  align: left top;
 }
 
 .date-input {
@@ -81,12 +56,20 @@ AutoComplete {
   margin-right: 1;
 }
 
-#nslc, #timeframe, #merge, #gaps-quality {
-  column-span: 4;
+#times {
+  width: 30;
 }
 
 #mergegaps {
-  margin-right: 3;
+  max-width: 12;
+}
+
+#request-button {
+  margin-right: 5;
+}
+
+#post-file {
+  width: 50;
 }
 
 #status-container {
