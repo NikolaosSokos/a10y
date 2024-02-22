@@ -282,7 +282,9 @@ class Requests(Static):
 
     def compose(self) -> ComposeResult:
         yield Static("[b]Requests Control[/b]", id="request-title")
-        yield SelectionList(
+        yield Container(
+            Checkbox("Select all Nodes", True, id="all-nodes"),
+            SelectionList(
                 ("GFZ", "https://geofon.gfz-potsdam.de/fdsnws/", True),
                 ("ODC", "https://orfeus-eu.org/fdsnws/", True),
                 ("ETHZ", "https://eida.ethz.ch/fdsnws/", True),
@@ -296,7 +298,9 @@ class Requests(Static):
                 ("KOERI", "https://eida.koeri.boun.edu.tr/fdsnws/", True),
                 ("UIB-NORSAR", "https://eida.geo.uib.no/fdsnws/", True),
                 id="nodes"
-            )
+            ),
+            id="nodes-container"
+        )
         yield Horizontal(
             Label("Network:", classes="request-label"),
             AutoComplete(
@@ -401,6 +405,15 @@ class AvailabilityUI(App):
             id="application-container"
         )
         yield Footer()
+
+
+    def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
+        """A function to select/deselect all nodes when corresponding checkbox is clicked"""
+        if event.checkbox == self.query_one("#all-nodes"):
+            if self.query_one("#all-nodes").value:
+                self.query_one("#nodes").select_all()
+            else:
+                self.query_one("#nodes").deselect_all()
 
 
     def on_select_changed(self, event: Select.Changed) -> None:
