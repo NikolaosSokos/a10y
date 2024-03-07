@@ -3,3 +3,4 @@ endtime = "now"
 quality = ["D", "R", "Q", "M"]
 mergegaps = 1.0
 merge = ["overlap"]
+includerestricted = true

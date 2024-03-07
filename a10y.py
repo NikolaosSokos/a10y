@@ -355,6 +355,7 @@ class Requests(Static):
             id="options"
         )
         yield Horizontal(
+            Checkbox("Include Restricted", default_includerestricted, id="restricted"),
             Button("Send", variant="primary", id="request-button"),
             Input(placeholder="Enter POST file path", value=default_file, suggester=FileSuggester(), id="post-file"),
             Button("File", variant="primary", id="file-button"),
@@ -543,9 +544,10 @@ class AvailabilityUI(App):
         merge = ",".join([option for option, bool in zip(['samplerate', 'quality', 'overlap'], [self.query_one("#samplerate").value, self.query_one("#qual").value, self.query_one("#overlap").value]) if bool])
         mergegaps = str(self.query_one("#mergegaps").value)
         quality = ",".join([q for q, bool in zip(['D', 'R', 'Q', 'M'], [self.query_one("#qd").value, self.query_one("#qr").value, self.query_one("#qq").value, self.query_one("#qm").value]) if bool])
+        restricted = self.query_one("#restricted").value
         self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nIssuing request to {url}')
         self.query_one("#status-container").scroll_end()
-        r = requests.post(url, data=f'{"quality="+quality if quality else ""}\n{"mergegaps="+mergegaps if mergegaps else ""}\nformat=geocsv\n{"merge="+merge if merge else ""}\n{data}')
+        r = requests.post(url, data=f'{"quality="+quality if quality else ""}\n{"mergegaps="+mergegaps if mergegaps else ""}\nformat=geocsv\n{"merge="+merge if merge else ""}\n{"includerestricted=TRUE" if restricted else ""}\n{data}')
         if r.status_code == 204:
             self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]No data available from {url}[/red]')
             if "hide" not in self.query_one("#loading").classes:
@@ -799,6 +801,7 @@ if __name__ == "__main__":
     default_merge_samplerate = False
     default_merge_quality = False
     default_merge_overlap = True
+    default_includerestricted = True
 
     if args.config is not None:
         config_file = args.config
@@ -866,6 +869,9 @@ if __name__ == "__main__":
                 default_merge_quality = True
             if 'overlap' not in config['merge']:
                 default_merge_overlap = False
+            # includerestricted
+            if config['includerestricted'] == False:
+                default_includerestricted = False
     elif args.config is not None:
         logging.error(f"Config file '{config_file}' not found")
         sys.exit(1)
