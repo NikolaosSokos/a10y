@@ -194,7 +194,7 @@ class CursoredText(Input):
 [gold3]t[/gold3]: toggle results view           [gold3]tab/shif+tab[/gold3]: jump to next/previous channel            [gold3]ctrl+t/ctrl+b[/gold3]: jump to top/bottom channel
 [gold3]right/left[/gold3]: move cursor on line  [gold3]home/end[/gold3]: jump to beginning/end of line                [gold3]n/p[/gold3]: jump to next/previous trace
 [gold3]c[/gold3]: capture NSLC under cursor     [gold3]s/e[/gold3]: capture timestamp under cursor as Start/End Time  [gold3]z[/gold3]: capture time span under cursor as Start and End Time
-Quality codes colors: [orange1][b]D[/b][/orange1] [green1][b]R[/b][/green1] [orchid][b]Q[/b][/orchid] [turquoise4][b]M[/b][/turquoise4]""",
+Quality codes colors: [orange1][b]D[/b][/orange1] [green1][b]R[/b][/green1] [orchid][b]Q[/b][/orchid] [turquoise4][b]M[/b][/turquoise4]    Restriction policy: [i]empty[/i]/┄/[red1][b]R[/b][/red1] (open/unknown/restricted)""",
         )
         event.prevent_default()
 
@@ -562,7 +562,7 @@ class AvailabilityUI(App):
         else:
             self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[green]Request to {url} successfully returned data[/green]')
             self.req_text += f'\n{r.text}'
-            self.call_from_thread(self.show_results, r.text)
+            self.call_from_thread(self.show_results, r)
         self.query_one("#status-container").scroll_end()
 
 
@@ -635,8 +635,10 @@ class AvailabilityUI(App):
                         self.parallel_requests_availability(url+'availability/1/query', data)
 
 
-    async def show_results(self, csv_results):
+    async def show_results(self, r):
         """The function responsible for drawing and showing the timelines"""
+        csv_results = r.text
+        request = r.request
         if not self.query(ContentSwitcher):
             await self.query_one('#results-widget').mount(ContentSwitcher(Container(id="lines"), ScrollableContainer(Static(id="plain"), id="plain-container"), initial="lines"))
             infoBar = Static("Quality:     Timestamp:                       Trace start:                       Trace end:                    ", id="info-bar")
@@ -699,7 +701,7 @@ class AvailabilityUI(App):
                     # start of gaps is the start of the first gap in this span and end is the start of the new trace
                     infos[key][i] = [str(int(infos[key][i][0])+1), infos[key][i][1], infos[key][i][2], start_trace.strftime("%Y-%m-%dT%H:%M:%S"), infos[key][i][4], infos[key][i][5]]
         # longest possible label to align start of lines
-        longest_label = 24
+        longest_label = 26
         for k in lines:
             infos[k].append(("", "", "", "", "", "")) # because cursor can go one character after the end of the input
             # add infos in long gaps
@@ -713,11 +715,35 @@ class AvailabilityUI(App):
                     #infos[k][i][3] = min([datetime.strptime(row.split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ") for row in csv_results if datetime.strptime(row.split('|')[6], "%Y-%m-%dT%H:%M:%S.%fZ") > datetime.strptime(infos[k][i][1], "%Y-%m-%dT%H:%M:%S")] + [end_frame])
                     #infos[k][i][3] = infos[k][i][3].strftime("%Y-%m-%dT%H:%M:%S")
             # add line in results
-            await self.query_one('#results-container').mount(Horizontal(Label(f"{k}{' '*(longest_label-len(k))}"), CursoredText(value=''.join(lines[k]), info=infos[k], id=f"_{k}"), classes="result-item"))
+            await self.query_one('#results-container').mount(Horizontal(Label(f"{k} ┄{' '*(longest_label-len(k))}"), CursoredText(value=''.join(lines[k]), info=infos[k], id=f"_{k}"), classes="result-item"))
         if self.query(CursoredText):
             self.query(CursoredText)[0].focus()
         if "hide" not in self.query_one("#loading").classes:
             self.query_one("#loading").add_class("hide")
+        # show restrictions info for each channel using /extent method of availability webservice
+        self.show_restriction(request)
+
+
+    @work(thread=True)
+    def show_restriction(self, request):
+        """A function for showing whether a channel is restricted or not"""
+        worker = get_current_worker()
+        new_url = request.url.replace("query", "extent")
+        old_body = request.body.split('\n')
+        filtered = [row for row in old_body if "mergegaps" not in row]
+        new_body = '\n'.join(filtered)
+        self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving restrictions info from {new_url}')
+        r = requests.post(new_url, data=new_body)
+        if r.status_code == 200:
+            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved restrictions info from {new_url}[/green]')
+            for line in r.text.splitlines()[5:]:
+                parts = line.split('|')
+                nslc = f"{parts[0]}_{parts[1]}_{parts[2]}_{parts[3]}"
+                label_item = self.query_one(f"#_{nslc}").parent.query_one(Label)
+                if parts[10] == "RESTRICTED":
+                    label_item.update(f"{label_item.renderable[:len(nslc)+1]}[red1][b]R[/b][/red1]{label_item.renderable[len(nslc)+2:]}")
+                else:
+                    label_item.update(f"{label_item.renderable[:len(nslc)+1]} {label_item.renderable[len(nslc)+2:]}")
 
 
     def action_toggle_help(self) -> None:
