@@ -35,8 +35,7 @@ jobs:
       run: |
         tag=$(git describe --tags --abbrev=0)
         echo "Creating release for tag $tag"
-        ls .
-        ls a10y-linux-x86_64/dist
-        ls a10y-win.exe/dist
-        ls a10y-macos.exe/dist
+        mv a10y-linux-x86_64/dist/a10y . && rm -rf a10y-linux-x86_64 && mv a10y a10y-linux-x86_64
+        mv a10y-win.exe/dist/a10y.exe . && rm -rf a10y-win.exe && mv a10y.exe a10y-win.exe
+        mv a10y-macos.exe/dist/a10y . && rm -rf a10y-macos.exe && mv a10y a10y-macos.exe
         gh release create "$tag" a10y-linux-x86_64 a10y-win.exe a10y-macos.exe
