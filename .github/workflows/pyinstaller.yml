@@ -75,7 +75,6 @@ jobs:
           upload_exe_with_name: 'a10y-macos.exe'
 
    upload-artifacts:
-     runs-on: ubuntu-latest
      steps:
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
