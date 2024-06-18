@@ -76,6 +76,10 @@ jobs:
 
   upload-artifacts:
     runs-on: ubuntu-latest
+    needs:
+      - pyinstaller-build-linux
+      - pyinstaller-build-win
+      - pyinstaller-build-macos
     steps:
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
