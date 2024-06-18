@@ -573,7 +573,7 @@ class AvailabilityUI(App):
         # clear previous results
         self.req_text = ""
         if self.query(ContentSwitcher):
-            await self.query_one(ContentSwitcher).remove()
+            self.query_one(ContentSwitcher).remove()
         self.query_one("#error-results").update("")
         self.query_one("#error-results").add_class("hide")
         # show loading indicator in results
