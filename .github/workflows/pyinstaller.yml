@@ -55,7 +55,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: a10y-linux-x86_64
-          path: a10y-linux-x86_64
+          path: .
 
   pyinstaller-build-win:
     runs-on: windows-latest
@@ -71,7 +71,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: a10y-win.exe
-          path: a10y-win.exe
+          path: .
 
   pyinstaller-build-macos:
     runs-on: macos-latest
@@ -87,4 +87,4 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: a10y-macos.exe
-          path: a10y-macos.exe
+          path: .
