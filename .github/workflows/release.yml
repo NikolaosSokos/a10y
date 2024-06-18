@@ -28,26 +28,17 @@ jobs:
         git config user.email "${{ secrets.GITHUB_ACTOR }}@users.noreply.github.com"
         git config user.name "${{ secrets.GITHUB_ACTOR }}"
 
+    - name: Download Artifacts
+      uses: actions/download-artifact@v2
+
     - name: Download Linux Artifact
       uses: actions/download-artifact@v2
       with:
         name: a10y-linux-x86_64
-        path: .
-
-    - name: Download Windows Artifact
-      uses: actions/download-artifact@v2
-      with:
-        name: a10y-win.exe
-        path: .
-
-    - name: Download MacOS Artifact
-      uses: actions/download-artifact@v2
-      with:
-        name: a10y-macos.exe
-        path: .
+        path: artifacts/
 
     - name: Create Release
       run: |
         tag=$(git describe --tags --abbrev=0)
         echo "Creating release for tag $tag"
-        gh release create "$tag" a10y-linux-x86_64 a10y-win.exe a10y-macos.exe
+        ls .
