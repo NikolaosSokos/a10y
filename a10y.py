@@ -284,21 +284,7 @@ class Requests(Static):
         yield Static("[b]Requests Control[/b]", id="request-title")
         yield Container(
             Checkbox("Select all Nodes", True, id="all-nodes"),
-            SelectionList(
-                ("GFZ", "https://geofon.gfz-potsdam.de/fdsnws/", True),
-                ("ODC", "https://orfeus-eu.org/fdsnws/", True),
-                ("ETHZ", "https://eida.ethz.ch/fdsnws/", True),
-                ("RESIF", "https://ws.resif.fr/fdsnws/", True),
-                ("INGV", "https://webservices.ingv.it/fdsnws/", True),
-                ("LMU", "https://erde.geophysik.uni-muenchen.de/fdsnws/", True),
-                ("ICGC", "https://ws.icgc.cat/fdsnws/", True),
-                ("NOA", "https://eida.gein.noa.gr/fdsnws/", True),
-                ("BGR", "https://eida.bgr.de/fdsnws/", True),
-                ("NIEP", "https://eida-sc3.infp.ro/fdsnws/", True),
-                ("KOERI", "https://eida.koeri.boun.edu.tr/fdsnws/", True),
-                ("UIB-NORSAR", "https://eida.geo.uib.no/fdsnws/", True),
-                id="nodes"
-            ),
+            SelectionList(*nodesUrls, id="nodes"),
             id="nodes-container"
         )
         yield Horizontal(
@@ -814,6 +800,27 @@ if __name__ == "__main__":
 
     args = parse_arguments()
     routing = 'https://www.orfeus-eu.org/eidaws/routing/1/query?'
+
+    reqNodes = requests.get('https://orfeus-eu.org/epb/nodes')
+    nodesUrls = []
+    if reqNodes.status_code == 200:
+        for n in reqNodes.json():
+            nodesUrls.append((n['node_code'], f"https://{n['node_url_base']}/fdsnws/", True))
+    else:
+        nodesUrls = [
+            ("GFZ", "https://geofon.gfz-potsdam.de/fdsnws/", True),
+            ("ODC", "https://orfeus-eu.org/fdsnws/", True),
+            ("ETHZ", "https://eida.ethz.ch/fdsnws/", True),
+            ("RESIF", "https://ws.resif.fr/fdsnws/", True),
+            ("INGV", "https://webservices.ingv.it/fdsnws/", True),
+            ("LMU", "https://erde.geophysik.uni-muenchen.de/fdsnws/", True),
+            ("ICGC", "https://ws.icgc.cat/fdsnws/", True),
+            ("NOA", "https://eida.gein.noa.gr/fdsnws/", True),
+            ("BGR", "https://eida.bgr.de/fdsnws/", True),
+            ("NIEP", "https://eida-sc3.infp.ro/fdsnws/", True),
+            ("KOERI", "https://eida.koeri.boun.edu.tr/fdsnws/", True),
+            ("UIB-NORSAR", "https://eida.geo.uib.no/fdsnws/", True)
+        ]
 
     # use below defaults or take them from config file if exists
     default_file = args.post
