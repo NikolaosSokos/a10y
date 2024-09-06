@@ -18,7 +18,6 @@ from textual.suggester import Suggester
 import math
 import tomli
 
-
 class FileSuggester(Suggester):
     """A suggester for the POST file input"""
 
@@ -817,6 +816,7 @@ if __name__ == "__main__":
             ("ICGC", "https://ws.icgc.cat/fdsnws/", True),
             ("NOA", "https://eida.gein.noa.gr/fdsnws/", True),
             ("BGR", "https://eida.bgr.de/fdsnws/", True),
+            ("BGS", "https://eida.bgs.ac.uk/fdsnws/", True),
             ("NIEP", "https://eida-sc3.infp.ro/fdsnws/", True),
             ("KOERI", "https://eida.koeri.boun.edu.tr/fdsnws/", True),
             ("UIB-NORSAR", "https://eida.geo.uib.no/fdsnws/", True)
