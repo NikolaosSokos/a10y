@@ -189,11 +189,11 @@ class CursoredText(Input):
             self.parent.post_message(events.DescendantFocus(self))
         self.update_info_bar()
         self.parent.parent.parent.parent.parent.parent.parent.parent.query_one("#explanations-keys").update(
-"""[gold3]ctrl+c[/gold3]: close app  [gold3]ctrl+s[/gold3]: send request  [gold3]esc[/gold3]: cancel request  [gold3]up/down/pgUp/pgDown[/gold3]: scroll up/down if in scrollable window
-[gold3]t[/gold3]: toggle results view           [gold3]tab/shif+tab[/gold3]: jump to next/previous channel            [gold3]ctrl+t/ctrl+b[/gold3]: jump to top/bottom channel
-[gold3]right/left[/gold3]: move cursor on line  [gold3]home/end[/gold3]: jump to beginning/end of line                [gold3]n/p[/gold3]: jump to next/previous trace
-[gold3]c[/gold3]: capture NSLC under cursor     [gold3]s/e[/gold3]: capture timestamp under cursor as Start/End Time  [gold3]z[/gold3]: capture time span under cursor as Start and End Time
-Quality codes colors: [orange1][b]D[/b][/orange1] [green1][b]R[/b][/green1] [orchid][b]Q[/b][/orchid] [turquoise4][b]M[/b][/turquoise4]    Restriction policy: [i]empty[/i]/┄/[red1][b]R[/b][/red1] (open/unknown/restricted)""",
+            """[gold3]ctrl+c[/gold3]: close app  [gold3]ctrl+s[/gold3]: send request  [gold3]esc[/gold3]: cancel request  [gold3]up/down/pgUp/pgDown[/gold3]: scroll up/down if in scrollable window
+            [gold3]t[/gold3]: toggle results view           [gold3]tab/shif+tab[/gold3]: jump to next/previous channel            [gold3]ctrl+t/ctrl+b[/gold3]: jump to top/bottom channel
+            [gold3]right/left[/gold3]: move cursor on line  [gold3]home/end[/gold3]: jump to beginning/end of line                [gold3]n/p[/gold3]: jump to next/previous trace
+            [gold3]c[/gold3]: capture NSLC under cursor     [gold3]s/e[/gold3]: capture timestamp under cursor as Start/End Time  [gold3]z[/gold3]: capture time span under cursor as Start and End Time
+            Quality codes colors: [orange1][b]D[/b][/orange1] [green1][b]R[/b][/green1] [orchid][b]Q[/b][/orchid] [turquoise4][b]M[/b][/turquoise4]    Restriction policy: [i]empty[/i]/┄/[red1][b]R[/b][/red1] (open/unknown/restricted)""",
         )
         event.prevent_default()
 
@@ -201,8 +201,8 @@ Quality codes colors: [orange1][b]D[/b][/orange1] [green1][b]R[/b][/green1] [orc
         super()._on_blur(event)
         try:
             self.parent.parent.parent.parent.parent.parent.parent.parent.query_one("#explanations-keys").update(
-"""[gold3]ctrl+c[/gold3]: close app  [gold3]tab/shif+tab[/gold3]: cycle through options  [gold3]ctrl+s[/gold3]: send request  [gold3]esc[/gold3]: cancel request
-[gold3]up/down/pgUp/pgDown[/gold3]: scroll up/down if in scrollable window""")
+                """[gold3]ctrl+c[/gold3]: close app  [gold3]tab/shif+tab[/gold3]: cycle through options  [gold3]ctrl+s[/gold3]: send request  [gold3]esc[/gold3]: cancel request
+                [gold3]up/down/pgUp/pgDown[/gold3]: scroll up/down if in scrollable window""")
         except:
             pass
 
@@ -271,8 +271,8 @@ class Explanations(Static):
     def compose(self) -> ComposeResult:
         yield Static("[b]Useful Keys[/b]")
         yield Static(
-"""[gold3]ctrl+c[/gold3]: close app  [gold3]tab/shif+tab[/gold3]: cycle through options  [gold3]ctrl+s[/gold3]: send request  [gold3]esc[/gold3]: cancel request
-[gold3]up/down/pgUp/pgDown[/gold3]: scroll up/down if in scrollable window""",
+            """[gold3]ctrl+c[/gold3]: close app  [gold3]tab/shif+tab[/gold3]: cycle through options  [gold3]ctrl+s[/gold3]: send request  [gold3]esc[/gold3]: cancel request
+            [gold3]up/down/pgUp/pgDown[/gold3]: scroll up/down if in scrollable window""",
             id="explanations-keys")
 
 
@@ -456,6 +456,7 @@ class AvailabilityUI(App):
     @work(exclusive=True, thread=True)
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """A function to change status when an NSLC input field is submitted (i.e. is typed and enter is hit)"""
+        # COULD BE ON Change 
         # keep app responsive while making requests
         worker = get_current_worker()
         # for typing network
