@@ -4,17 +4,50 @@ The current repository hosts a user interface terminal application for the Avail
 
 The application is mainly built using [textual](https://textual.textualize.io/) library for making terminal applications.
 
-
 ## Demo video
 
 [![asciicast](https://asciinema.org/a/HybCoSNhMJbNm2Ff8NH6zomTS.svg)](https://asciinema.org/a/HybCoSNhMJbNm2Ff8NH6zomTS)
-
 
 ## Installation
 
 ### As a binary (recommended)
 
 You can download a10y in the release section, by choosing the binary that suits your system.
+
+### Using uv (Development)
+1. **Clone the Repository and Install uv**
+
+   If uv is not already installed, you can add it using pip:
+
+   ```bash
+   pip install uv
+   ```
+
+   Then, clone the repository:
+
+   ```bash
+   git clone https://github.com/EIDA/a10y.git
+   cd a10y
+   ```
+
+2. **Sync Dependencies**
+
+   Navigate to the project directory and run:
+
+   ```bash
+   uv sync
+   ```
+
+   This command will install all dependencies listed in `pyproject.toml`.
+
+3. **Run the Script**
+
+   After syncing, use:
+
+   ```bash
+   uv run
+   ```
+
 
 ### In a python virtual environment
 
@@ -34,6 +67,7 @@ python a10y.py
 Supposing you have [anaconda](https://www.anaconda.com/) or [miniconda](https://docs.conda.io/projects/miniconda/en/latest/) installed in your system, follow the steps below.
 
 Clone the sources, create a conda environment, install dependencies and run as a python script:
+
 ```
 git clone https://github.com/EIDA/a10y.git
 cd a10y
@@ -52,17 +86,20 @@ The executable can be created on every system using [pyinstaller](https://pyinst
 It has been tested in an Ubuntu machine with pyinstaller version 6.3.0.
 
 **After having created a python or conda environment, activated it and installed dependencies as shown above**, install pyinstaller and execute it as below:
+
 ```
 python -m pip install pyinstaller
 pyinstaller --onefile --add-data "a10y.css:." a10y.py
 ```
 
 This will create:
-  - an `a10y.spec` file
-  - a `build` folder
-  - a `dist` folder
 
- Into `dist` folder you can find the final executable. By executing through terminal, as every other executable in your system, it opens the application:
+- an `a10y.spec` file
+- a `build` folder
+- a `dist` folder
+
+Into `dist` folder you can find the final executable. By executing through terminal, as every other executable in your system, it opens the application:
+
 ```
 cd dist
 ./a10y
@@ -73,8 +110,9 @@ The final executable can be redistributed and be used as a standalone executable
 ## Options
 
 The application can be executed with the following options:
-  - `-p or --post` followed by path that points to a file to start the application using that file for making POST requests to availability webservice
-  - `-c or --config` followed by path that points to a configuration file to start the application using specific default values for requests
+
+- `-p or --post` followed by path that points to a file to start the application using that file for making POST requests to availability webservice
+- `-c or --config` followed by path that points to a configuration file to start the application using specific default values for requests
 
 ## Configuration
 
@@ -84,9 +122,9 @@ With the configuration file, you can set your default values for starttime, endt
 
 The application looks for the configuration file in this order:
 
-  - with the `-c` or `--config` command line option
-  - in the `$XDG_CONFIG_DIR/a10y` directory
-  - in the directory of the application script
+- with the `-c` or `--config` command line option
+- in the `$XDG_CONFIG_DIR/a10y` directory
+- in the directory of the application script
 
 ## Customizing the layout
 
