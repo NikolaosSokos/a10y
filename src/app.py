@@ -33,12 +33,13 @@ class AvailabilityUI(App):
         yield Header()
         yield ScrollableContainer(
             Explanations(classes="box hide"),
-            Requests(self.nodes_urls, classes="box"),  
+            Requests(self.nodes_urls, self.config, classes="box"),  # Pass config
             Collapsible(Status(), title="Status", classes="box", id="status-collapse"),
             Results(classes="box", id="results-widget"),
             id="application-container"
         )
         yield Footer()
+
 
 
 
