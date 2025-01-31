@@ -1,15 +1,22 @@
 from textual.app import App
-from textual.widgets import Header, Footer, Checkbox, Select, Input, Button, Collapsible
-from textual.containers import ScrollableContainer
-from widgets import Explanations, Requests, Results, Status  # Import modular widgets
+from textual.widgets import Header, Footer, Checkbox, Select, Input, Button, Collapsible, ContentSwitcher,Static,Label
+from textual.containers import ScrollableContainer , Container, Horizontal
+from widgets import Explanations, Requests, Results, Status, CursoredText # Import modular widgets
 import requests
 from datetime import datetime, timedelta
 from textual.binding import Binding
+from textual_autocomplete import AutoComplete, Dropdown, DropdownItem
 from textual.app import App, ComposeResult
 from textual import work
+from textual.worker import get_current_worker
+import math
+import os
+
+
 class AvailabilityUI(App):
-    def __init__(self, nodes_urls, **kwargs):
+    def __init__(self, nodes_urls, routing, **kwargs):
         self.nodes_urls = nodes_urls  # Store nodes for later use
+        self.routing = routing  # Store routing URL
         self.config = kwargs  # Store remaining settings
         super().__init__()  
 
@@ -116,14 +123,14 @@ class AvailabilityUI(App):
             autocomplete.items = []
             # get available stations from routing system
             net = self.query_one('#network').value
-            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving routing info from {routing}service=station&format=post{"&net="+net if net else ""}')
+            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving routing info from {self.routing}service=station&format=post{"&net="+net if net else ""}')
             self.query_one("#status-container").scroll_end()
-            r = requests.get(f'{routing}service=station&format=post{"&net="+net if net else ""}')
+            r = requests.get(f'{self.routing}service=station&format=post{"&net="+net if net else ""}')
             if r.status_code != 200:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve routing info from {routing}service=station&format=post{"&net="+net if net else ""}[/red]')
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve routing info from {self.routing}service=station&format=post{"&net="+net if net else ""}[/red]')
                 self.query_one("#status-container").scroll_end()
             else:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved routing info from {routing}service=station&format=post{"&net="+net if net else ""}[/green]')
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved routing info from {self.routing}service=station&format=post{"&net="+net if net else ""}[/green]')
                 self.query_one("#status-container").scroll_end()
                 for line in r.text.splitlines()+['']:
                     if line.startswith('http'):
@@ -147,14 +154,14 @@ class AvailabilityUI(App):
             # get available channels from FDSN
             net = self.query_one('#network').value
             sta = self.query_one('#station').value
-            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving routing info from {routing}service=station&format=post{"&net="+net if net else ""}{"&sta="+sta if sta else ""}')
+            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving routing info from {self.routing}service=station&format=post{"&net="+net if net else ""}{"&sta="+sta if sta else ""}')
             self.query_one("#status-container").scroll_end()
-            r = requests.get(f'{routing}service=station&format=post{"&net="+net if net else ""}{"&sta="+sta if sta else ""}')
+            r = requests.get(f'{self.routing}service=station&format=post{"&net="+net if net else ""}{"&sta="+sta if sta else ""}')
             if r.status_code != 200:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve routing info from {routing}service=station&format=post{"&net="+net if net else ""}{"&sta="+sta if sta else ""}[/red]')
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve routing info from {self.routing}service=station&format=post{"&net="+net if net else ""}{"&sta="+sta if sta else ""}[/red]')
                 self.query_one("#status-container").scroll_end()
             else:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved routing info from {routing}service=station&format=json{"&net="+net if net else ""}{"&sta="+sta if sta else ""}[/green]')
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved routing info from {self.routing}service=station&format=json{"&net="+net if net else ""}{"&sta="+sta if sta else ""}[/green]')
                 self.query_one("#status-container").scroll_end()
                 for line in r.text.splitlines()+['']:
                     if line.startswith('http'):
@@ -224,15 +231,15 @@ class AvailabilityUI(App):
         # request from send button
         if event.button == self.query_one("#request-button"):
             params = f"&format=post{'&net='+net if net else ''}{'&sta='+sta if sta else ''}{'&loc='+loc if loc else ''}{'&cha='+cha if cha else ''}{'&start='+start if start else ''}{'&end='+end if end else ''}"
-            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving routing info from {routing}service=availability{params}')
+            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving routing info from {self.routing}service=availability{params}')
             self.query_one("#status-container").scroll_end()
-            r = requests.get(f'{routing}service=availability{params}')
+            r = requests.get(f'{self.routing}service=availability{params}')
             if r.status_code != 200:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve routing info from {routing}service=availability{params}[/red]')
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve routing info from {self.routing}service=availability{params}[/red]')
                 self.query_one("#status-container").scroll_end()
                 self.query_one("#loading").add_class("hide")
             else:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved routing info from {routing}service=availability{params}[/green]')
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved routing info from {self.routing}service=availability{params}[/green]')
                 self.query_one("#status-container").scroll_end()
                 at_least_one = False
                 for line in r.text.splitlines()+['']:

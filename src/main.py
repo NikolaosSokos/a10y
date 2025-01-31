@@ -155,10 +155,12 @@ if __name__ == "__main__":
     # Load configuration from file (if provided)
     defaults["default_file"] = args.post  # Overwrite default POST file if provided
     defaults = load_config(args.config, defaults)
+    routing = "https://www.orfeus-eu.org/eidaws/routing/1/query?"
 
     # Run the application with loaded settings
     app = AvailabilityUI(
         nodes_urls=nodes_urls,
+        routing=routing,  # Pass routing URL
         **defaults  # Pass unpacked defaults
     )
     app.run()

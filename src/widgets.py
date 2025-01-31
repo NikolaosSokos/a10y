@@ -7,6 +7,7 @@ import os
 from textual.suggester import Suggester
 from textual import events
 from rich.text import Text
+from rich.cells import get_character_cell_size
 class Explanations(Static):
     """Explanations box with common key functions"""
 
