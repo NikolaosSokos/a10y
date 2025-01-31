@@ -63,8 +63,11 @@ def load_defaults():
         "default_includerestricted": True,
     }
 
+
+
 def load_config(config_path, defaults):
     """Load configuration from a TOML file and update defaults."""
+    
     if not config_path:
         # No config file provided, try the default location
         config_dir = os.getenv("XDG_CONFIG_DIR", "")
@@ -74,49 +77,68 @@ def load_config(config_path, defaults):
         # Config file is missing, return defaults without modification
         return defaults
 
-    with open(config_path, "rb") as f:
-        try:
+    # Try to load the config file
+    try:
+        with open(config_path, "rb") as f:
             config = tomli.load(f)
-        except:
-            logging.error(f"Invalid format in config file {config_path}")
-            sys.exit(1)
+    except (tomli.TOMLDecodeError, OSError):
+        logging.error(f"Invalid format in config file {config_path}")
+        raise ValueError(f"Invalid TOML format in config file: {config_path}")
 
-    # Update values from config while keeping defaults intact
-    defaults["default_starttime"] = config.get("starttime", defaults["default_starttime"])
-    defaults["default_endtime"] = config.get("endtime", defaults["default_endtime"])
-    
-    # Parse numerical values safely
+    # Handle starttime
+    if "starttime" in config:
+        try:
+            parts = config["starttime"].split()
+            if len(parts) == 2 and parts[1].lower() == "days":
+                num = int(parts[0])
+                defaults["default_starttime"] = (datetime.now() - timedelta(days=num)).strftime("%Y-%m-%dT%H:%M:%S")
+            else:
+                datetime.strptime(config["starttime"], "%Y-%m-%dT%H:%M:%S")  # Validate format
+                defaults["default_starttime"] = config["starttime"]
+        except (ValueError, IndexError):
+            raise ValueError(f"Invalid starttime format in {config_path}")
+
+    # Handle endtime
+    if "endtime" in config:
+        if config["endtime"].lower() == "now":
+            pass  # Keep default
+        else:
+            try:
+                datetime.strptime(config["endtime"], "%Y-%m-%dT%H:%M:%S")  # Validate format
+                defaults["default_endtime"] = config["endtime"]
+            except ValueError:
+                raise ValueError(f"Invalid endtime format in {config_path}")
+
+    # Handle mergegaps
     if "mergegaps" in config:
         try:
-            defaults["default_mergegaps"] = str(float(config["mergegaps"]))
+            defaults["default_mergegaps"] = str(float(config["mergegaps"]))  # Ensure it's a valid number
         except ValueError:
-            logging.error(f"Invalid mergegaps format in {config_path}")
-            sys.exit(1)
+            raise ValueError(f"Invalid mergegaps format in {config_path}")
 
-    # Quality settings
+    # Handle quality settings
     if "quality" in config:
-        if any(q not in ["D", "R", "Q", "M"] for q in config["quality"]):
-            logging.error(f"Invalid quality codes in {config_path}")
-            sys.exit(1)
+        if not isinstance(config["quality"], list) or any(q not in ["D", "R", "Q", "M"] for q in config["quality"]):
+            raise ValueError(f"Invalid quality codes in {config_path}")
         defaults["default_quality_D"] = "D" in config["quality"]
         defaults["default_quality_R"] = "R" in config["quality"]
         defaults["default_quality_Q"] = "Q" in config["quality"]
         defaults["default_quality_M"] = "M" in config["quality"]
 
-    # Merge options
+    # Handle merge options
     if "merge" in config:
-        if any(m not in ["samplerate", "quality", "overlap"] for m in config["merge"]):
-            logging.error(f"Invalid merge options in {config_path}")
-            sys.exit(1)
+        if not isinstance(config["merge"], list) or any(m not in ["samplerate", "quality", "overlap"] for m in config["merge"]):
+            raise ValueError(f"Invalid merge options in {config_path}")
         defaults["default_merge_samplerate"] = "samplerate" in config["merge"]
         defaults["default_merge_quality"] = "quality" in config["merge"]
         defaults["default_merge_overlap"] = "overlap" in config["merge"]
 
-    # Restricted data setting
+    # Handle restricted data setting
     if "includerestricted" in config:
         defaults["default_includerestricted"] = bool(config["includerestricted"])
 
-    return defaults  # Return the updated defaults
+    return defaults  # Return updated defaults
+
 
 
 

@@ -8,35 +8,11 @@ from textual.binding import Binding
 from textual.app import App, ComposeResult
 from textual import work
 class AvailabilityUI(App):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # Initialize the nodesUrls data
-        self.nodesUrls = self.load_nodes_urls()
-    def load_nodes_urls(self):
-        """Load nodes URLs from the web or use default values."""
-        try:
-            response = requests.get("https://orfeus-eu.org/epb/nodes")
-            if response.status_code == 200:
-                return [(node["node_code"], f"https://{node['node_url_base']}/fdsnws/") for node in response.json()]
-        except requests.RequestException:
-            pass
+    def __init__(self, nodes_urls, **kwargs):
+        self.nodes_urls = nodes_urls  # Store nodes for later use
+        self.config = kwargs  # Store remaining settings
+        super().__init__()  
 
-        # Fallback to default values if the web request fails
-        return [
-            ("GFZ", "https://geofon.gfz-potsdam.de/fdsnws/", True),
-            ("ODC", "https://orfeus-eu.org/fdsnws/", True),
-            ("ETHZ", "https://eida.ethz.ch/fdsnws/", True),
-            ("RESIF", "https://ws.resif.fr/fdsnws/", True),
-            ("INGV", "https://webservices.ingv.it/fdsnws/", True),
-            ("LMU", "https://erde.geophysik.uni-muenchen.de/fdsnws/", True),
-            ("ICGC", "https://ws.icgc.cat/fdsnws/", True),
-            ("NOA", "https://eida.gein.noa.gr/fdsnws/", True),
-            ("BGR", "https://eida.bgr.de/fdsnws/", True),
-            ("BGS", "https://eida.bgs.ac.uk/fdsnws/", True),
-            ("NIEP", "https://eida-sc3.infp.ro/fdsnws/", True),
-            ("KOERI", "https://eida.koeri.boun.edu.tr/fdsnws/", True),
-            ("UIB-NORSAR", "https://eida.geo.uib.no/fdsnws/", True)
-        ]
     CSS_PATH = "a10y.css"
     BINDINGS = [
         Binding("ctlrl+c", "quit", "Quit"),
@@ -57,12 +33,13 @@ class AvailabilityUI(App):
         yield Header()
         yield ScrollableContainer(
             Explanations(classes="box hide"),
-            Requests(classes="box"),
+            Requests(self.nodes_urls, classes="box"),  
             Collapsible(Status(), title="Status", classes="box", id="status-collapse"),
             Results(classes="box", id="results-widget"),
             id="application-container"
         )
         yield Footer()
+
 
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:

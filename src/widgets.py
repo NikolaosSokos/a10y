@@ -14,6 +14,9 @@ class Explanations(Static):
 
 
 class Requests(Static):
+    def __init__(self, nodes_urls, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.nodes_urls = nodes_urls  # Store nodes for later use
     def compose(self) -> ComposeResult:
         yield Static("[b]Requests Control[/b]", id="request-title")
         yield Container(
