@@ -1,7 +1,6 @@
 import argparse
 import requests
 import os
-import sys
 import logging
 import tomli
 from datetime import datetime, timedelta

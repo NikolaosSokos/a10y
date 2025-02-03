@@ -11,7 +11,7 @@ from textual import work
 from textual.worker import get_current_worker
 import math
 import os
-
+import sys
 
 class AvailabilityUI(App):
     def __init__(self, nodes_urls, routing, **kwargs):
@@ -20,9 +20,17 @@ class AvailabilityUI(App):
         self.config = kwargs  # Store remaining settings
         super().__init__()  
 
+    def action_quit(self) -> None:
+        """Ensure terminal resets properly when quitting."""
+        self.exit()
+        if sys.platform == "win32":
+            os.system("cls")  # Windows: Clear terminal
+        else:
+            os.system("reset")  # Linux/macOS: Reset terminal
+
     CSS_PATH = "a10y.css"
     BINDINGS = [
-        Binding("ctlrl+c", "quit", "Quit"),
+        Binding("ctrl+c", "quit", "Quit"),
         Binding("tab/shift+tab", "navigate", "Navigate"),
         Binding("ctrl+s", "send_button", "Send Request"),
         Binding("?", "toggle_help", "Help"),
@@ -287,8 +295,17 @@ class AvailabilityUI(App):
             infoBar = Static("Quality:     Timestamp:                       Trace start:                       Trace end:                    ", id="info-bar")
             self.query_one('#lines').mount(infoBar)
             self.query_one('#lines').mount(ScrollableContainer(id="results-container"))
-        # cut time frame into desired number of spans
         num_spans = 130
+        if not self.query_one("#start").value.strip():
+            self.query_one("#status-line").update(
+                f"{self.query_one('#status-line').renderable}\n[orange1]⚠️ Please enter a start date![/orange1]"
+            )
+            return 
+        if not self.query_one("#end").value.strip():
+            self.query_one("#status-line").update(
+                f"{self.query_one('#status-line').renderable}\n[orange1]⚠️ Please enter an end date![/orange1]"
+            )
+            return  # Stop execution if the end date is missing
         try:
             start_frame = datetime.strptime(self.query_one("#start").value, "%Y-%m-%dT%H:%M:%S")
         except:
