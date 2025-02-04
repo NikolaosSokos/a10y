@@ -219,6 +219,19 @@ class AvailabilityUI(App):
 
     @work(exclusive=True, thread=True)
     async def on_button_pressed(self, event: Button.Pressed) -> None:
+        # Get input values
+        start = self.query_one("#start").value
+        end = self.query_one("#end").value
+        if not start.strip():
+            self.query_one("#status-line").update("[red]Error: Start time is required![/red]")
+            return  # Stop execution if invalid
+
+        if not end.strip():
+            self.query_one("#status-line").update("[red]Error: End time is required![/red]")
+            return  # Stop execution if invalid
+
+
+        self.query_one("#status-line").update("[green]Sending request...[/green]")
         """A function to send availability request when Send button is clicked"""
         worker = get_current_worker()
         # clear previous results
