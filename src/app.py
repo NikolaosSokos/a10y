@@ -215,89 +215,104 @@ class AvailabilityUI(App):
             self.req_text += f'\n{r.text}'
             self.call_from_thread(self.show_results, r)
         self.query_one("#status-container").scroll_end()
-
+    def change_button_disabled(self, disabled: bool) -> None:
+        """Enable or disable the button safely in the main thread."""
+        try:
+            button = self.query_one("#request-button")
+            button.disabled = disabled
+            button.refresh()  # Force UI update
+        except Exception as e:
+            print(f"Error: {e}")
 
     @work(exclusive=True, thread=True)
     async def on_button_pressed(self, event: Button.Pressed) -> None:
-        # Get input values
-        start = self.query_one("#start").value
-        end = self.query_one("#end").value
-        if not start.strip():
-            self.query_one("#status-line").update("[red]Error: Start time is required![/red]")
-            return  # Stop execution if invalid
+        # Disable the button to prevent multiple clicks
+        self.call_from_thread(lambda: self.change_button_disabled(True))
 
-        if not end.strip():
-            self.query_one("#status-line").update("[red]Error: End time is required![/red]")
-            return  # Stop execution if invalid
+        try:
+            start = self.query_one("#start").value
+            end = self.query_one("#end").value
+            if not start.strip():
+                self.query_one("#status-line").update("[red]Error: Start time is required![/red]")
+                return  # Stop execution if invalid
+
+            if not end.strip():
+                self.query_one("#status-line").update("[red]Error: End time is required![/red]")
+                return  # Stop execution if invalid
 
 
-        self.query_one("#status-line").update("[green]Sending request...[/green]")
-        """A function to send availability request when Send button is clicked"""
-        worker = get_current_worker()
-        # clear previous results
-        self.req_text = ""
-        if self.query(ContentSwitcher):
-            self.query_one(ContentSwitcher).remove()
-        self.query_one("#error-results").update("")
-        self.query_one("#error-results").add_class("hide")
-        # show loading indicator in results
-        self.query_one("#loading").remove_class("hide")
-        # build request
-        net = self.query_one("#network").value
-        sta = self.query_one("#station").value
-        loc = self.query_one("#location").value
-        cha = self.query_one("#channel").value
-        start = self.query_one("#start").value
-        end = self.query_one("#end").value
-        # request from send button
-        if event.button == self.query_one("#request-button"):
-            params = f"&format=post{'&net='+net if net else ''}{'&sta='+sta if sta else ''}{'&loc='+loc if loc else ''}{'&cha='+cha if cha else ''}{'&start='+start if start else ''}{'&end='+end if end else ''}"
-            self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving routing info from {self.routing}service=availability{params}')
-            self.query_one("#status-container").scroll_end()
-            r = requests.get(f'{self.routing}service=availability{params}')
-            if r.status_code != 200:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve routing info from {self.routing}service=availability{params}[/red]')
+            self.query_one("#status-line").update("[green]Sending request...[/green]")
+            """A function to send availability request when Send button is clicked"""
+            worker = get_current_worker()
+            # clear previous results
+            self.req_text = ""
+            if self.query(ContentSwitcher):
+                self.query_one(ContentSwitcher).remove()
+            self.query_one("#error-results").update("")
+            self.query_one("#error-results").add_class("hide")
+            # show loading indicator in results
+            self.query_one("#loading").remove_class("hide")
+            # build request
+            net = self.query_one("#network").value
+            sta = self.query_one("#station").value
+            loc = self.query_one("#location").value
+            cha = self.query_one("#channel").value
+            start = self.query_one("#start").value
+            end = self.query_one("#end").value
+            # request from send button
+            if event.button == self.query_one("#request-button"):
+                params = f"&format=post{'&net='+net if net else ''}{'&sta='+sta if sta else ''}{'&loc='+loc if loc else ''}{'&cha='+cha if cha else ''}{'&start='+start if start else ''}{'&end='+end if end else ''}"
+                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving routing info from {self.routing}service=availability{params}')
                 self.query_one("#status-container").scroll_end()
-                self.query_one("#loading").add_class("hide")
-            else:
-                self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved routing info from {self.routing}service=availability{params}[/green]')
-                self.query_one("#status-container").scroll_end()
-                at_least_one = False
-                for line in r.text.splitlines()+['']:
-                    if line.startswith('http'):
-                        data = ''
-                        url = line
-                    elif line == "" and any([url.startswith(node_url) for node_url in self.query_one("#nodes").selected]):
-                        if not worker.is_cancelled:
-                            at_least_one = True
-                            # execute the requests in parallel and in batches of 100
-                            lines = data.splitlines()
-                            batch_size = 100
-                            for i in range(0, len(lines), batch_size):
-                                batch_data = '\n'.join(lines[i:i+batch_size])
-                                self.parallel_requests_availability(url, batch_data)
-                    else:
-                        data += f'{line}\n'
-                if not at_least_one:
-                    self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]No data available[/red]')
+                r = requests.get(f'{self.routing}service=availability{params}')
+                if r.status_code != 200:
+                    self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve routing info from {self.routing}service=availability{params}[/red]')
                     self.query_one("#status-container").scroll_end()
-                    if "hide" not in self.query_one("#loading").classes:
-                        self.query_one("#loading").add_class("hide")
-        # request from file button
-        elif event.button == self.query_one("#file-button"):
-            filename = self.query_one("#post-file").value
-            if os.path.isfile(filename):
-                self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nReading NSLC from file {filename}')
-                self.query_one("#status-container").scroll_end()
-                data = ''
-                with open(filename, 'r') as f:
-                    for l in f.readlines():
-                        if '=' not in l:
-                            data += f"{' '.join(l.split()[:4])} {start} {end}\n"
-                for url in self.query_one("#nodes").selected:
-                    if not worker.is_cancelled:
-                        self.parallel_requests_availability(url+'availability/1/query', data)
+                    self.query_one("#loading").add_class("hide")
+                else:
+                    self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved routing info from {self.routing}service=availability{params}[/green]')
+                    self.query_one("#status-container").scroll_end()
+                    at_least_one = False
+                    for line in r.text.splitlines()+['']:
+                        if line.startswith('http'):
+                            data = ''
+                            url = line
+                        elif line == "" and any([url.startswith(node_url) for node_url in self.query_one("#nodes").selected]):
+                            if not worker.is_cancelled:
+                                at_least_one = True
+                                # execute the requests in parallel and in batches of 100
+                                lines = data.splitlines()
+                                batch_size = 100
+                                for i in range(0, len(lines), batch_size):
+                                    batch_data = '\n'.join(lines[i:i+batch_size])
+                                    self.parallel_requests_availability(url, batch_data)
+                        else:
+                            data += f'{line}\n'
+                    if not at_least_one:
+                        self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]No data available[/red]')
+                        self.query_one("#status-container").scroll_end()
+                        if "hide" not in self.query_one("#loading").classes:
+                            self.query_one("#loading").add_class("hide")
+            # request from file button
+            elif event.button == self.query_one("#file-button"):
+                filename = self.query_one("#post-file").value
+                if os.path.isfile(filename):
+                    self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\nReading NSLC from file {filename}')
+                    self.query_one("#status-container").scroll_end()
+                    data = ''
+                    with open(filename, 'r') as f:
+                        for l in f.readlines():
+                            if '=' not in l:
+                                data += f"{' '.join(l.split()[:4])} {start} {end}\n"
+                    for url in self.query_one("#nodes").selected:
+                        if not worker.is_cancelled:
+                            self.parallel_requests_availability(url+'availability/1/query', data)
+            
+        
+        finally:
+            pass
 
+        
 
     async def show_results(self, r):
         """The function responsible for drawing and showing the timelines"""
@@ -397,6 +412,7 @@ class AvailabilityUI(App):
         self.show_restriction(request)
 
 
+
     @work(thread=True)
     def show_restriction(self, request):
         """A function for showing whether a channel is restricted or not"""
@@ -408,7 +424,10 @@ class AvailabilityUI(App):
         self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving restrictions info from {new_url}')
         r = requests.post(new_url, data=new_body)
         if r.status_code == 200:
+            self.call_from_thread(lambda: self.change_button_disabled(False))
             self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved restrictions info from {new_url}[/green]')
+            # Ensure the button is re-enabled once the work is done
+            
             for line in r.text.splitlines()[5:]:
                 parts = line.split('|')
                 nslc = f"{parts[0]}_{parts[1]}_{parts[2]}_{parts[3]}"

@@ -88,7 +88,7 @@ class Requests(Static):
         )
         yield Horizontal(
             Checkbox("Include Restricted", self.config["default_includerestricted"], id="restricted"),
-            Button("Send", variant="primary", id="request-button"),
+            Button("Send", variant="primary", id="request-button",disabled=False),
             Input(placeholder="Enter POST file path", value=self.config["default_file"], suggester=FileSuggester(), id="post-file"),
             Button("File", variant="primary", id="file-button"),
             id="send-request"
