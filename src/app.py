@@ -135,6 +135,7 @@ class AvailabilityUI(App):
             self.query_one("#status-container").scroll_end()
             r = requests.get(f'{self.routing}service=station&format=post{"&net="+net if net else ""}')
             if r.status_code != 200:
+                self.call_from_thread(lambda: self.change_button_disabled(False))
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve routing info from {self.routing}service=station&format=post{"&net="+net if net else ""}[/red]')
                 self.query_one("#status-container").scroll_end()
             else:
@@ -166,6 +167,7 @@ class AvailabilityUI(App):
             self.query_one("#status-container").scroll_end()
             r = requests.get(f'{self.routing}service=station&format=post{"&net="+net if net else ""}{"&sta="+sta if sta else ""}')
             if r.status_code != 200:
+                self.call_from_thread(lambda: self.change_button_disabled(False))
                 self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve routing info from {self.routing}service=station&format=post{"&net="+net if net else ""}{"&sta="+sta if sta else ""}[/red]')
                 self.query_one("#status-container").scroll_end()
             else:
@@ -179,6 +181,7 @@ class AvailabilityUI(App):
                         self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\nRetrieving Channels from {url}')
                         r = requests.post(url, data=f'format=text\nlevel=channel\n{data}')
                         if r.status_code != 200:
+                            self.call_from_thread(lambda: self.change_button_disabled(False))
                             self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve Channels from {url}[/red]')
                             self.query_one("#status-container").scroll_end()
                         else:
@@ -200,17 +203,19 @@ class AvailabilityUI(App):
         self.query_one("#status-container").scroll_end()
         r = requests.post(url, data=f'{"quality="+quality if quality else ""}\n{"mergegaps="+mergegaps if mergegaps else ""}\nformat=geocsv\n{"merge="+merge if merge else ""}\n{"includerestricted=TRUE" if restricted else ""}\n{data}')
         if r.status_code == 204:
+            self.call_from_thread(lambda: self.change_button_disabled(False))
             self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]No data available from {url}[/red]')
             if "hide" not in self.query_one("#loading").classes:
                 self.query_one("#loading").add_class("hide")
         elif r.status_code != 200:
+            self.call_from_thread(lambda: self.change_button_disabled(False))
             self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]Request to {url} failed. See below for more details[/red]')
             self.query_one("#error-results").remove_class("hide")
             self.query_one("#error-results").update(f'[red]{self.query_one("#error-results").renderable}\n{r.text}[/red]')
             self.query_one("#error-results").scroll_end()
             if "hide" not in self.query_one("#loading").classes:
                 self.query_one("#loading").add_class("hide")
-        else:
+        else: 
             self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[green]Request to {url} successfully returned data[/green]')
             self.req_text += f'\n{r.text}'
             self.call_from_thread(self.show_results, r)
@@ -234,10 +239,12 @@ class AvailabilityUI(App):
             end = self.query_one("#end").value
             if not start.strip():
                 self.query_one("#status-line").update("[red]Error: Start time is required![/red]")
+                self.call_from_thread(lambda: self.change_button_disabled(False))
                 return  # Stop execution if invalid
 
             if not end.strip():
                 self.query_one("#status-line").update("[red]Error: End time is required![/red]")
+                self.call_from_thread(lambda: self.change_button_disabled(False))
                 return  # Stop execution if invalid
 
 
@@ -266,6 +273,7 @@ class AvailabilityUI(App):
                 self.query_one("#status-container").scroll_end()
                 r = requests.get(f'{self.routing}service=availability{params}')
                 if r.status_code != 200:
+                    self.call_from_thread(lambda: self.change_button_disabled(False)) 
                     self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[red]Couldn\'t retrieve routing info from {self.routing}service=availability{params}[/red]')
                     self.query_one("#status-container").scroll_end()
                     self.query_one("#loading").add_class("hide")
@@ -290,6 +298,7 @@ class AvailabilityUI(App):
                             data += f'{line}\n'
                     if not at_least_one:
                         self.query_one('#status-line').update(f'{self.query_one("#status-line").renderable}\n[red]No data available[/red]')
+                        self.call_from_thread(lambda: self.change_button_disabled(False))
                         self.query_one("#status-container").scroll_end()
                         if "hide" not in self.query_one("#loading").classes:
                             self.query_one("#loading").add_class("hide")
@@ -311,7 +320,6 @@ class AvailabilityUI(App):
         
         finally:
             pass
-
         
 
     async def show_results(self, r):
@@ -426,8 +434,6 @@ class AvailabilityUI(App):
         if r.status_code == 200:
             self.call_from_thread(lambda: self.change_button_disabled(False))
             self.query_one("#status-line").update(f'{self.query_one("#status-line").renderable}\n[green]Retrieved restrictions info from {new_url}[/green]')
-            # Ensure the button is re-enabled once the work is done
-            
             for line in r.text.splitlines()[5:]:
                 parts = line.split('|')
                 nslc = f"{parts[0]}_{parts[1]}_{parts[2]}_{parts[3]}"
